@@ -42,7 +42,16 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
     };
   }, []);
 
+  const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = typeof navigator !== "undefined" && "standalone" in navigator && (navigator as { standalone?: boolean }).standalone === true;
+  const isIOSSafari = isIOS && !isStandalone;
+
   async function enableNotifications() {
+    // iOS Safari does not support Web Push — must be installed as PWA
+    if (isIOSSafari) {
+      setNotificationMessage("홈 화면에 추가 후 앱으로 열어주세요.");
+      return;
+    }
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       setNotificationMessage("이 브라우저에서는 알림을 사용할 수 없습니다.");
       return;
@@ -204,13 +213,29 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="font-black">준비 완료 알림</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">iPhone은 홈 화면에 추가한 뒤 사용할 수 있습니다.</p>
+                  {isIOSSafari ? (
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      Safari 하단 공유 버튼 →&nbsp;<strong>홈 화면에 추가</strong> → 앱으로 열기
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      커피가 준비되면 알림을 받습니다.
+                    </p>
+                  )}
                 </div>
-                <button className="secondary-action min-w-24 px-4 text-sm" onClick={enableNotifications} type="button">
-                  {pushSubscription ? "설정됨" : "알림 받기"}
+                <button
+                  className={`secondary-action min-w-24 px-4 text-sm ${isIOSSafari ? "opacity-50" : ""}`}
+                  onClick={enableNotifications}
+                  type="button"
+                >
+                  {pushSubscription ? "설정됨" : isIOSSafari ? "앱으로 열기" : "알림 받기"}
                 </button>
               </div>
-              {notificationMessage ? <p className="mt-2 text-xs font-bold text-[var(--green)]">{notificationMessage}</p> : null}
+              {notificationMessage ? (
+                <p className={`mt-2 text-xs font-bold ${notificationMessage.includes("받습니다") ? "text-[var(--green)]" : "text-[var(--orange)]"}`}>
+                  {notificationMessage}
+                </p>
+              ) : null}
             </div>
 
             <div className="mt-7 rounded-2xl bg-[var(--surface-soft)] p-4">
