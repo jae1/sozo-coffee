@@ -1,11 +1,9 @@
-import { isBarista } from "@/lib/auth/barista-session";
 import { apiError, validationError } from "@/lib/http/responses";
 import { updateStatus } from "@/lib/orders/update-status";
 import { statusTransitionSchema } from "@/lib/validation/schemas";
 import { NextResponse } from "next/server";
 
 export async function PATCH(request: Request, context: { params: Promise<{ orderId: string }> }) {
-  if (!(await isBarista())) return apiError(401, "unauthorized", "Barista PIN required.");
   const parsed = statusTransitionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return validationError(parsed.error);
   const { orderId } = await context.params;

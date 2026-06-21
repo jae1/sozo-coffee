@@ -1,11 +1,9 @@
-import { isBarista } from "@/lib/auth/barista-session";
 import { apiError, validationError } from "@/lib/http/responses";
 import { closeSession } from "@/lib/orders/manage-session";
 import { closeSessionSchema } from "@/lib/validation/schemas";
 import { NextResponse } from "next/server";
 
 export async function PATCH(request: Request) {
-  if (!(await isBarista())) return apiError(401, "unauthorized", "Barista PIN required.");
   const parsed = closeSessionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return validationError(parsed.error);
   try {

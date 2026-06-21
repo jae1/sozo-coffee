@@ -2,16 +2,14 @@
 
 import type { BoardData, BoardOrder, OrderStatus } from "@/types/coffee";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 function nextStatus(status: OrderStatus) {
   return status === "ordered" ? "in_progress" : status === "in_progress" ? "ready" : null;
 }
 
-export function BaristaExperience({ initial, authenticated }: { initial: BoardData | null; authenticated: boolean }) {
-  const [isAuthenticated, setAuthenticated] = useState(authenticated);
+export function BaristaExperience({ initial }: { initial: BoardData }) {
   const [board, setBoard] = useState(initial);
-  const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
 
   async function refresh() {
@@ -20,23 +18,9 @@ export function BaristaExperience({ initial, authenticated }: { initial: BoardDa
   }
 
   useEffect(() => {
-    if (!isAuthenticated) return;
     const timer = window.setInterval(refresh, 2000);
     return () => window.clearInterval(timer);
-  }, [isAuthenticated]);
-
-  async function login(event: FormEvent) {
-    event.preventDefault();
-    const response = await fetch("/api/barista/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin }),
-    });
-    if (!response.ok) return setMessage("비밀번호가 맞지 않습니다.");
-    setAuthenticated(true);
-    setMessage("");
-    await refresh();
-  }
+  }, []);
 
   async function open() {
     const response = await fetch("/api/barista/sessions", { method: "POST" });
@@ -70,28 +54,6 @@ export function BaristaExperience({ initial, authenticated }: { initial: BoardDa
     });
     setMessage(response.ok ? "" : "주문 상태가 변경되었습니다. 다시 확인해 주세요.");
     await refresh();
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <main className="app-shell grid place-items-center p-5">
-        <section className="panel w-full max-w-md overflow-hidden">
-          <div className="bg-[var(--ink)] p-7 text-white">
-            <Link className="flex items-center gap-3" href="/">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-white font-black text-[var(--ink)]">S</span>
-              <span className="font-black">Sozo Coffee</span>
-            </Link>
-            <h1 className="mt-14 text-4xl font-black tracking-[-0.045em]">바리스타</h1>
-          </div>
-          <form className="grid gap-3 p-7" onSubmit={login}>
-            <label className="text-sm font-extrabold" htmlFor="barista-pin">4자리 비밀번호</label>
-            <input id="barista-pin" aria-label="Barista PIN" autoComplete="one-time-code" className="field text-center text-2xl font-black tracking-[0.45em]" inputMode="numeric" maxLength={4} pattern="\d{4}" placeholder="••••" required value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
-            <button className="primary-action mt-2 p-4">입장</button>
-            {message ? <p aria-live="polite" className="rounded-xl bg-red-50 p-3 text-center text-sm font-bold text-red-700">{message}</p> : null}
-          </form>
-        </section>
-      </main>
-    );
   }
 
   const active = board?.orders ?? [];
