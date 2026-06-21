@@ -34,11 +34,11 @@ export async function getBoard(): Promise<BoardData> {
       .order("ordered_at");
     if (error) throw error;
     orders = ((data ?? []) as OrderRow[])
-      .filter((order) => order.status !== "ready" || isVisibleReady(order.ready_at))
-      .map((order) => {
+      .map((order, index) => {
         const item = Array.isArray(order.menu_items) ? order.menu_items[0] : order.menu_items;
         return {
           id: order.id,
+          orderNumber: index + 1,
           customerName: order.customer_name,
           drink: item?.display_name ?? "Coffee",
           temperature: order.temperature,
@@ -48,7 +48,8 @@ export async function getBoard(): Promise<BoardData> {
           orderedAt: order.ordered_at,
           readyAt: order.ready_at,
         };
-      });
+      })
+      .filter((order) => order.status !== "ready" || isVisibleReady(order.readyAt));
   }
 
   return {

@@ -31,7 +31,7 @@ export function SharedBoard({ orders }: { orders: BoardOrder[] }) {
               {items.map((order) => (
                 <article className="rounded-[14px] border border-[var(--line)] bg-white p-4 shadow-sm" key={order.id}>
                   <div className="flex items-start justify-between gap-3">
-                    <strong className="text-base">{order.customerName}</strong>
+                    <strong className="text-base">#{order.orderNumber} {order.customerName}</strong>
                     <span aria-label={status} className="whitespace-nowrap rounded-full bg-[var(--canvas)] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">
                       {label}
                     </span>

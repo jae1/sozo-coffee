@@ -14,6 +14,7 @@ export interface MenuChoice {
 
 export interface BoardOrder {
   id: string;
+  orderNumber: number;
   customerName: string;
   drink: string;
   temperature: Temperature;
