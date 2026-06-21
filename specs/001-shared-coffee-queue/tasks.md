@@ -155,13 +155,13 @@ barista, and Ready orders clean themselves off the active board.
 
 **Purpose**: Harden the complete feature for deployment and a real gathering.
 
-- [ ] T054 [P] Add structured server error logging that excludes PINs, secrets, and unnecessary personal data in `src/lib/observability/logger.ts`
+- [X] T054 [P] Add structured server error logging that excludes PINs, secrets, and unnecessary personal data in `src/lib/observability/logger.ts`
 - [X] T055 [P] Add security headers and disable unnecessary framework disclosure in `next.config.ts`
 - [X] T056 [P] Add a production-ready README covering setup, Supabase migration/seed, replacing placeholder member names, PIN hash generation, deployment, and rollback in `README.md`
-- [ ] T057 Replace placeholder seed names with the approved nine member display names in `supabase/seed.sql`
-- [ ] T058 Run and fix lint, typecheck, unit/integration tests, Playwright tests, and production build using scripts in `package.json`
-- [ ] T059 Validate every scenario and mobile/accessibility check in `specs/001-shared-coffee-queue/quickstart.md` and record any deviations in `specs/001-shared-coffee-queue/checklists/requirements.md`
-- [ ] T060 Review deployed Supabase RLS policies and Vercel environment separation, then document the verified production configuration in `README.md`
+- [X] T057 Replace placeholder seed names with the approved nine member display names in `supabase/seed.sql`
+- [X] T058 Run and fix lint, typecheck, unit/integration tests, Playwright tests, and production build using scripts in `package.json`
+- [X] T059 Validate every scenario and mobile/accessibility check in `specs/001-shared-coffee-queue/quickstart.md` and record any deviations in `specs/001-shared-coffee-queue/checklists/requirements.md`
+- [X] T060 Review deployed Supabase RLS policies and Vercel environment separation, then document the verified production configuration in `README.md`
 
 ---
 
