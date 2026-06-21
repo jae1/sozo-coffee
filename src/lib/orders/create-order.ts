@@ -45,6 +45,7 @@ export async function createOrder(input: CreateOrderInput) {
       temperature: input.temperature,
       milk: menu.uses_dairy_milk ? "dairy" : null,
       note: input.note || null,
+      push_subscription: input.pushSubscription ?? null,
     })
     .select("id,status")
     .single();

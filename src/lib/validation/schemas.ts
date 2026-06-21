@@ -16,6 +16,14 @@ export const createOrderSchema = z.object({
   menuItemId: z.enum(["americano", "latte", "mocha"]),
   temperature: z.enum(["hot", "iced"]),
   note: z.string().trim().max(120).optional().default(""),
+  pushSubscription: z.object({
+    endpoint: z.string().url(),
+    expirationTime: z.number().nullable().optional(),
+    keys: z.object({
+      p256dh: z.string().min(1),
+      auth: z.string().min(1),
+    }),
+  }).nullable().optional(),
 });
 
 export const pinSchema = z.object({

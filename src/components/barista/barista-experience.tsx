@@ -112,14 +112,14 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
           <div className="mx-auto grid max-w-4xl gap-8">
             <div className="grid grid-cols-2 gap-3">
               {[
-                { status: "in_progress" as const, label: "만드는 중으로 이동" },
-                { status: "ready" as const, label: "준비 완료로 이동" },
+                { status: "in_progress" as const, label: "만드는 중" },
+                { status: "ready" as const, label: "준비 완료" },
               ].map((target) => {
                 const accepts = canDrop(target.status);
                 const active = accepts && dropTarget === target.status;
                 return (
                   <div
-                    className={`grid min-h-16 place-items-center rounded-xl border-2 text-sm font-bold transition-colors ${
+                    className={`grid min-h-28 place-items-center rounded-2xl border-2 text-xl font-black transition-colors sm:min-h-32 sm:text-2xl ${
                       active
                         ? "border-[var(--green)] bg-[var(--green-soft)] text-[var(--green)]"
                         : accepts

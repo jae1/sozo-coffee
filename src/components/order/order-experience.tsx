@@ -3,7 +3,7 @@
 import { SharedBoard } from "@/components/board/shared-board";
 import type { BoardData } from "@/types/coffee";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 export function OrderExperience({ initial }: { initial: BoardData }) {
   const [board, setBoard] = useState(initial);
@@ -15,6 +15,9 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
   const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const [activeTab, setActiveTab] = useState<"order" | "status">("order");
+  const [pushSubscription, setPushSubscription] = useState<PushSubscriptionJSON | null>(null);
+  const [notificationMessage, setNotificationMessage] = useState("");
   const selectedDrink = board.menu.find((item) => item.id === menuItemId);
   const selectedName = identityType === "member"
     ? board.members.find((member) => member.id === memberId)?.displayName
@@ -23,6 +26,52 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
   async function refresh() {
     const response = await fetch("/api/board", { cache: "no-store" });
     if (response.ok) setBoard(await response.json());
+  }
+
+  useEffect(() => {
+    const timer = window.setInterval(refresh, 2000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+    };
+  }, []);
+
+  async function enableNotifications() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setNotificationMessage("이 브라우저에서는 알림을 사용할 수 없습니다.");
+      return;
+    }
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!publicKey) {
+      setNotificationMessage("알림 설정이 아직 완료되지 않았습니다.");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setNotificationMessage("알림 권한이 필요합니다.");
+        return;
+      }
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      const existing = await registration.pushManager.getSubscription();
+      const subscription = existing ?? await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: Uint8Array.from(
+          atob(publicKey.replace(/-/g, "+").replace(/_/g, "/")),
+          (character) => character.charCodeAt(0),
+        ),
+      });
+      setPushSubscription(subscription.toJSON());
+      setNotificationMessage("준비 완료 알림을 받습니다.");
+    } catch {
+      setNotificationMessage("알림을 설정하지 못했습니다.");
+    }
   }
 
   async function submit(event: FormEvent) {
@@ -38,6 +87,7 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
         menuItemId,
         temperature,
         note,
+        pushSubscription,
       }),
     });
     const payload = await response.json().catch(() => null);
@@ -46,6 +96,7 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
     setMessage("주문이 접수되었습니다.");
     setNote("");
     await refresh();
+    setActiveTab("status");
   }
 
   if (!board.session) {
@@ -81,19 +132,31 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
       <main className="mx-auto max-w-[1440px] px-4 py-6 pb-32 sm:px-6 sm:py-8 lg:pb-8">
         <div className="mb-7">
           <h1 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">커피 주문</h1>
-          <div className="mt-5 flex max-w-md items-center gap-2" aria-label="주문 단계">
-            {["이름", "음료", "온도"].map((step, index) => (
-              <div className="flex flex-1 items-center gap-2" key={step}>
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-xs font-black text-white">{index + 1}</span>
-                <span className="text-xs font-bold text-[var(--muted)]">{step}</span>
-                {index < 2 ? <span className="ml-auto h-px flex-1 bg-[var(--line)]" /> : null}
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
-          <form className="panel p-5 sm:p-6 lg:sticky lg:top-24" onSubmit={submit}>
+        <div className="mb-6 grid grid-cols-2 rounded-2xl bg-[var(--surface-soft)] p-1.5">
+          <button
+            className={`rounded-xl px-4 py-3 font-black ${activeTab === "order" ? "bg-white shadow-sm" : "text-[var(--muted)]"}`}
+            onClick={() => setActiveTab("order")}
+            type="button"
+          >
+            주문하기
+          </button>
+          <button
+            className={`rounded-xl px-4 py-3 font-black ${activeTab === "status" ? "bg-white shadow-sm" : "text-[var(--muted)]"}`}
+            onClick={() => {
+              setActiveTab("status");
+              void refresh();
+            }}
+            type="button"
+          >
+            주문 현황
+            {board.orders.length > 0 ? <span className="ml-2 rounded-full bg-[var(--ink)] px-2 py-0.5 text-xs text-white">{board.orders.length}</span> : null}
+          </button>
+        </div>
+
+        {activeTab === "order" ? (
+          <form className="panel mx-auto max-w-xl p-5 sm:p-6" onSubmit={submit}>
             <fieldset>
               <legend className="text-lg font-black">1. 이름</legend>
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -137,6 +200,19 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
               <textarea className="field mt-3 resize-none" maxLength={120} placeholder="얼음 적게 등" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
 
+            <div className="mt-6 rounded-2xl border border-[var(--line)] p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-black">준비 완료 알림</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">iPhone은 홈 화면에 추가한 뒤 사용할 수 있습니다.</p>
+                </div>
+                <button className="secondary-action min-w-24 px-4 text-sm" onClick={enableNotifications} type="button">
+                  {pushSubscription ? "설정됨" : "알림 받기"}
+                </button>
+              </div>
+              {notificationMessage ? <p className="mt-2 text-xs font-bold text-[var(--green)]">{notificationMessage}</p> : null}
+            </div>
+
             <div className="mt-7 rounded-2xl bg-[var(--surface-soft)] p-4">
               <p className="text-xs font-bold text-[var(--muted)]">주문 내용</p>
               <div className="mt-2 flex items-end justify-between gap-3">
@@ -151,6 +227,8 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
             <button className="primary-action mt-4 hidden w-full p-4 lg:block" disabled={pending} type="submit">{pending ? "주문 중…" : "주문하기"}</button>
             {message ? <p aria-live="polite" className="mt-3 rounded-xl bg-[var(--green-soft)] p-3 text-center text-sm font-extrabold text-[var(--green)]">{message}</p> : null}
 
+            <div aria-hidden="true" className="h-32 lg:hidden" />
+
             <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white p-3 shadow-[0_-8px_30px_rgb(20_20_18/8%)] lg:hidden">
               <div className="mx-auto flex max-w-lg items-center gap-3">
                 <div className="min-w-0 flex-1 pl-1">
@@ -161,8 +239,8 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
               </div>
             </div>
           </form>
-
-          <section>
+        ) : (
+          <section className="mx-auto max-w-5xl">
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-black tracking-tight">주문 현황</h2>
@@ -171,7 +249,7 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
             </div>
             <SharedBoard orders={board.orders} />
           </section>
-        </div>
+        )}
       </main>
     </div>
   );

@@ -18,7 +18,7 @@ export async function updateStatus(id: string, from: OrderStatus, to: OrderStatu
     .update(patch)
     .eq("id", id)
     .eq("status", from)
-    .select("id,status,updated_at")
+    .select("id,status,updated_at,customer_name,push_subscription")
     .maybeSingle();
   if (error) throw error;
   if (!data) return { kind: "conflict" as const };
