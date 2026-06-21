@@ -106,6 +106,7 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
     setNote("");
     await refresh();
     setActiveTab("status");
+    setTimeout(() => setMessage(""), 3000);
   }
 
   if (!board.session) {
