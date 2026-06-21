@@ -139,11 +139,12 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1440px] px-4 py-6 pb-32 sm:px-6 sm:py-8 lg:pb-8">
+      <main className="mx-auto max-w-[1440px] px-4 py-6 pb-32 sm:px-6 sm:py-8 lg:pb-10">
         <div className="mb-7">
           <h1 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">커피 주문</h1>
         </div>
 
+        {/* Tab switcher */}
         <div className="mb-6 grid grid-cols-2 rounded-2xl bg-[var(--surface-soft)] p-1.5">
           <button
             className={`rounded-xl px-4 py-3 font-black ${activeTab === "order" ? "bg-white shadow-sm" : "text-[var(--muted)]"}`}
@@ -166,99 +167,162 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
         </div>
 
         {activeTab === "order" ? (
-          <form className="panel mx-auto max-w-xl p-5 sm:p-6" onSubmit={submit}>
-            <fieldset>
-              <legend className="text-lg font-black">1. 이름</legend>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button className="choice-card px-4 font-bold" data-selected={identityType === "member"} onClick={() => setIdentityType("member")} type="button">멤버</button>
-                <button className="choice-card px-4 font-bold" data-selected={identityType === "guest"} onClick={() => setIdentityType("guest")} type="button">게스트</button>
-              </div>
-              {identityType === "member" ? (
-                <select aria-label="이름 선택" className="field mt-3" required value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-                  {board.members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
-                </select>
-              ) : (
-                <input aria-label="게스트 이름" className="field mt-3" maxLength={40} placeholder="이름" required value={guestName} onChange={(e) => setGuestName(e.target.value)} />
-              )}
-            </fieldset>
+          <form onSubmit={submit}>
+            {/* Desktop: 2-col inside the form. Mobile: single col */}
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
 
-            <fieldset className="mt-7">
-              <legend className="text-lg font-black">2. 음료</legend>
-              <div className="mt-4 grid gap-2.5">
-                {board.menu.map((item) => (
-                  <button className="choice-card flex min-h-16 items-center justify-between px-5 text-left font-extrabold" data-selected={menuItemId === item.id} key={item.id} onClick={() => setMenuItemId(item.id)} type="button">
-                    <span>{item.displayName}</span>
-                    <span aria-hidden="true" className={`h-5 w-5 rounded-full border-2 ${menuItemId === item.id ? "border-white bg-white" : "border-[var(--line)]"}`} />
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="mt-7">
-              <legend className="text-lg font-black">3. 온도</legend>
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
-                {(["hot", "iced"] as const).map((value) => (
-                  <button className="choice-card px-4 font-extrabold" data-selected={temperature === value} key={value} onClick={() => setTemperature(value)} type="button">
-                    {value === "hot" ? "Hot" : "Iced"}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <label className="mt-7 block text-lg font-black">
-              요청사항 <span className="text-sm font-normal text-[var(--muted)]">(선택)</span>
-              <textarea className="field mt-3 resize-none" maxLength={120} placeholder="얼음 적게 등" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
-            </label>
-
-            <div className="mt-6 rounded-2xl border border-[var(--line)] p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-black">준비 완료 알림</p>
-                  {isIOSSafari ? (
-                    <p className="mt-1 text-xs text-[var(--muted)]">
-                      Safari 하단 공유 버튼 →&nbsp;<strong>홈 화면에 추가</strong> → 앱으로 열기
-                    </p>
+              {/* Left: input fields */}
+              <div className="panel p-5 sm:p-7">
+                <fieldset>
+                  <legend className="text-lg font-black">1. 이름</legend>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button className="choice-card px-4 font-bold" data-selected={identityType === "member"} onClick={() => setIdentityType("member")} type="button">멤버</button>
+                    <button className="choice-card px-4 font-bold" data-selected={identityType === "guest"} onClick={() => setIdentityType("guest")} type="button">게스트</button>
+                  </div>
+                  {identityType === "member" ? (
+                    <select aria-label="이름 선택" className="field mt-3" required value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+                      {board.members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
+                    </select>
                   ) : (
-                    <p className="mt-1 text-xs text-[var(--muted)]">
-                      커피가 준비되면 알림을 받습니다.
-                    </p>
+                    <input aria-label="게스트 이름" className="field mt-3" maxLength={40} placeholder="이름" required value={guestName} onChange={(e) => setGuestName(e.target.value)} />
                   )}
-                </div>
-                <button
-                  className={`secondary-action min-w-24 px-4 text-sm ${isIOSSafari ? "opacity-50" : ""}`}
-                  onClick={enableNotifications}
-                  type="button"
-                >
-                  {pushSubscription ? "설정됨" : isIOSSafari ? "앱으로 열기" : "알림 받기"}
-                </button>
+                </fieldset>
+
+                <fieldset className="mt-8">
+                  <legend className="text-lg font-black">2. 음료</legend>
+                  <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
+                    {board.menu.map((item) => (
+                      <button
+                        className="choice-card flex min-h-[4.5rem] flex-col items-start justify-between p-4 text-left font-extrabold sm:min-h-24"
+                        data-selected={menuItemId === item.id}
+                        key={item.id}
+                        onClick={() => setMenuItemId(item.id)}
+                        type="button"
+                      >
+                        <span className="text-base leading-tight">{item.displayName}</span>
+                        <span aria-hidden="true" className={`mt-2 h-4 w-4 rounded-full border-2 ${menuItemId === item.id ? "border-white bg-white" : "border-[var(--line)]"}`} />
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset className="mt-8">
+                  <legend className="text-lg font-black">3. 온도</legend>
+                  <div className="mt-4 grid grid-cols-2 gap-2.5">
+                    {(["hot", "iced"] as const).map((value) => (
+                      <button
+                        className="choice-card min-h-14 px-4 text-lg font-extrabold"
+                        data-selected={temperature === value}
+                        key={value}
+                        onClick={() => setTemperature(value)}
+                        type="button"
+                      >
+                        {value === "hot" ? "☕ Hot" : "🧊 Iced"}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <label className="mt-8 block text-lg font-black">
+                  요청사항 <span className="text-sm font-normal text-[var(--muted)]">(선택)</span>
+                  <textarea className="field mt-3 resize-none" maxLength={120} placeholder="얼음 적게, 샷 추가 등" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                </label>
               </div>
-              {notificationMessage ? (
-                <p className={`mt-2 text-xs font-bold ${notificationMessage.includes("받습니다") ? "text-[var(--green)]" : "text-[var(--orange)]"}`}>
-                  {notificationMessage}
-                </p>
-              ) : null}
+
+              {/* Right: live order summary + notification + submit */}
+              <div className="mt-4 flex flex-col gap-4 lg:mt-0">
+                {/* Order preview card */}
+                <div className="panel p-5 sm:p-6">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">주문 확인</p>
+
+                  <div className="mt-5 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm font-black text-[var(--muted)]">1</span>
+                      <div className="min-w-0">
+                        <p className="text-xs text-[var(--muted)]">이름</p>
+                        <p className={`mt-0.5 truncate font-black ${selectedName ? "" : "text-[var(--muted)]"}`}>
+                          {selectedName || "선택해 주세요"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm font-black text-[var(--muted)]">2</span>
+                      <div>
+                        <p className="text-xs text-[var(--muted)]">음료</p>
+                        <p className="mt-0.5 font-black">{selectedDrink?.displayName ?? "—"}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm font-black text-[var(--muted)]">3</span>
+                      <div>
+                        <p className="text-xs text-[var(--muted)]">온도</p>
+                        <p className="mt-0.5 font-black">{temperature === "iced" ? "🧊 Iced" : "☕ Hot"}</p>
+                      </div>
+                    </div>
+
+                    {note && (
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm">✏️</span>
+                        <div className="min-w-0">
+                          <p className="text-xs text-[var(--muted)]">요청사항</p>
+                          <p className="mt-0.5 break-words text-sm font-bold">{note}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Final summary pill */}
+                  <div className="mt-6 rounded-xl bg-[var(--surface-soft)] px-4 py-3">
+                    <p className="text-sm font-black">
+                      {temperature === "iced" ? "🧊 Iced" : "☕ Hot"} {selectedDrink?.displayName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--muted)]">{selectedName || "이름을 선택해 주세요"}</p>
+                  </div>
+
+                  <button className="primary-action mt-4 hidden w-full p-4 text-base lg:flex lg:items-center lg:justify-center" disabled={pending} type="submit">
+                    {pending ? "주문 중…" : "주문하기"}
+                  </button>
+                  {message ? <p aria-live="polite" className="mt-3 rounded-xl bg-[var(--green-soft)] p-3 text-center text-sm font-extrabold text-[var(--green)]">{message}</p> : null}
+                </div>
+
+                {/* Notification */}
+                <div className="rounded-2xl border border-[var(--line)] bg-white p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-black">준비 완료 알림</p>
+                      {isIOSSafari ? (
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          공유 버튼 → <strong>홈 화면에 추가</strong> → 앱으로 열기
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-xs text-[var(--muted)]">커피가 준비되면 알림을 받습니다.</p>
+                      )}
+                    </div>
+                    <button
+                      className={`secondary-action shrink-0 px-4 text-sm ${isIOSSafari ? "opacity-50" : ""}`}
+                      onClick={enableNotifications}
+                      type="button"
+                    >
+                      {pushSubscription ? "설정됨" : isIOSSafari ? "앱으로" : "알림 받기"}
+                    </button>
+                  </div>
+                  {notificationMessage ? (
+                    <p className={`mt-2 text-xs font-bold ${notificationMessage.includes("받습니다") ? "text-[var(--green)]" : "text-[var(--orange)]"}`}>
+                      {notificationMessage}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
-            <div className="mt-7 rounded-2xl bg-[var(--surface-soft)] p-4">
-              <p className="text-xs font-bold text-[var(--muted)]">주문 내용</p>
-              <div className="mt-2 flex items-end justify-between gap-3">
-                <div>
-                  <p className="font-black">{temperature === "iced" ? "Iced" : "Hot"} {selectedDrink?.displayName}</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">{selectedName || "이름을 입력해 주세요"}</p>
-                </div>
-                {note ? <span className="max-w-32 truncate text-xs text-[var(--muted)]">{note}</span> : null}
-              </div>
-            </div>
-
-            <button className="primary-action mt-4 hidden w-full p-4 lg:block" disabled={pending} type="submit">{pending ? "주문 중…" : "주문하기"}</button>
-            {message ? <p aria-live="polite" className="mt-3 rounded-xl bg-[var(--green-soft)] p-3 text-center text-sm font-extrabold text-[var(--green)]">{message}</p> : null}
-
-            <div aria-hidden="true" className="h-32 lg:hidden" />
-
+            {/* Mobile fixed bottom bar */}
+            <div aria-hidden="true" className="h-24 lg:hidden" />
             <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white p-3 shadow-[0_-8px_30px_rgb(20_20_18/8%)] lg:hidden">
               <div className="mx-auto flex max-w-lg items-center gap-3">
                 <div className="min-w-0 flex-1 pl-1">
-                  <p className="truncate text-sm font-black">{temperature === "iced" ? "Iced" : "Hot"} {selectedDrink?.displayName}</p>
+                  <p className="truncate text-sm font-black">{temperature === "iced" ? "🧊 Iced" : "☕ Hot"} {selectedDrink?.displayName}</p>
                   <p className="truncate text-xs text-[var(--muted)]">{selectedName || "이름을 선택해 주세요"}</p>
                 </div>
                 <button className="primary-action min-w-32 px-5" disabled={pending} type="submit">{pending ? "주문 중…" : "주문하기"}</button>
@@ -266,11 +330,9 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
             </div>
           </form>
         ) : (
-          <section className="mx-auto max-w-5xl">
+          <section>
             <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight">주문 현황</h2>
-              </div>
+              <h2 className="text-2xl font-black tracking-tight">주문 현황</h2>
               <p className="text-sm text-[var(--muted)]">총 {board.orders.length}잔</p>
             </div>
             <SharedBoard orders={board.orders} />
