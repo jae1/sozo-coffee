@@ -1,28 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #f7f0e4;
-  --paper: #fffaf1;
-  --espresso: #2b1a12;
-  --coffee: #6f4028;
-  --caramel: #c98245;
-  --sage: #71806b;
-  --line: #dfcfbd;
+  --ink: #151513;
+  --muted: #6f6d66;
+  --canvas: #f4f3ee;
+  --surface: #ffffff;
+  --surface-soft: #ebe9e1;
+  --line: #dedcd3;
+  --coffee: #5b3526;
+  --coffee-dark: #342018;
+  --latte: #d9b895;
+  --green: #285943;
+  --green-soft: #dfece3;
+  --orange: #a84d20;
+  --orange-soft: #f4e5db;
+  --shadow: 0 1px 2px rgb(20 20 18 / 7%), 0 12px 36px rgb(20 20 18 / 6%);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  background: var(--canvas);
+}
+
 body {
   margin: 0;
-  background: var(--cream);
-  color: var(--espresso);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -30,13 +43,132 @@ textarea {
 button,
 a,
 input,
+select,
 textarea {
-  min-height: 44px;
+  min-height: 48px;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
 }
 
 :focus-visible {
-  outline: 3px solid var(--caramel);
+  outline: 3px solid #2176d2;
   outline-offset: 3px;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  border-bottom: 1px solid var(--line);
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(14px);
+}
+
+.brand-mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--ink);
+  color: white;
+  font-weight: 900;
+  letter-spacing: -0.08em;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.choice-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.choice-card:hover {
+  border-color: #aaa79d;
+}
+
+.choice-card:active {
+  transform: scale(0.985);
+}
+
+.choice-card[data-selected="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: white;
+}
+
+.primary-action {
+  border: 1px solid var(--ink);
+  border-radius: 14px;
+  background: var(--ink);
+  color: white;
+  font-weight: 800;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.primary-action:hover {
+  background: #33332f;
+}
+
+.primary-action:active {
+  transform: scale(0.99);
+}
+
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.secondary-action {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid #c9c7bf;
+  border-radius: 14px;
+  background: white;
+  padding: 0 14px;
+}
+
+textarea.field {
+  padding-block: 12px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 639px) {
+  .panel {
+    border-radius: 18px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

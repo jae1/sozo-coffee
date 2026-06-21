@@ -1,6 +1,7 @@
 "use client";
 
 import type { BoardData, BoardOrder, OrderStatus } from "@/types/coffee";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 function nextStatus(status: OrderStatus) {
@@ -73,37 +74,85 @@ export function BaristaExperience({ initial, authenticated }: { initial: BoardDa
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-6">
-        <h1 className="text-4xl font-black">Barista access</h1>
-        <p className="mt-2 text-black/55">Enter the shared four-digit PIN.</p>
-        <form className="mt-6 grid gap-3" onSubmit={login}>
-          <input aria-label="Barista PIN" autoComplete="one-time-code" className="rounded-2xl border bg-white p-4 text-center text-2xl tracking-[0.5em]" inputMode="numeric" maxLength={4} pattern="\d{4}" required value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
-          <button className="rounded-2xl bg-[var(--espresso)] p-4 font-black text-white">Unlock queue</button>
-          {message ? <p aria-live="polite" className="text-center text-sm font-bold text-red-700">{message}</p> : null}
-        </form>
+      <main className="app-shell grid place-items-center p-5">
+        <section className="panel w-full max-w-md overflow-hidden">
+          <div className="bg-[var(--ink)] p-7 text-white">
+            <Link className="flex items-center gap-3" href="/">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-white font-black text-[var(--ink)]">S</span>
+              <span className="font-black">Sozo Coffee</span>
+            </Link>
+            <h1 className="mt-14 text-4xl font-black tracking-[-0.045em]">Barista station</h1>
+            <p className="mt-3 text-white/60">Unlock the queue and start brewing.</p>
+          </div>
+          <form className="grid gap-3 p-7" onSubmit={login}>
+            <label className="text-sm font-extrabold" htmlFor="barista-pin">4-digit PIN</label>
+            <input id="barista-pin" aria-label="Barista PIN" autoComplete="one-time-code" className="field text-center text-2xl font-black tracking-[0.45em]" inputMode="numeric" maxLength={4} pattern="\d{4}" placeholder="••••" required value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
+            <button className="primary-action mt-2 p-4">Unlock station</button>
+            {message ? <p aria-live="polite" className="rounded-xl bg-red-50 p-3 text-center text-sm font-bold text-red-700">{message}</p> : null}
+          </form>
+        </section>
       </main>
     );
   }
 
   const active = board?.orders ?? [];
+  const waiting = active.filter((order) => order.status === "ordered");
+  const making = active.filter((order) => order.status === "in_progress");
   return (
-    <main className="mx-auto min-h-screen max-w-5xl p-4 sm:p-6">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="font-bold text-[var(--coffee)]">Barista station</p><h1 className="text-4xl font-black">Coffee queue</h1></div>
-        {board?.session ? <button className="rounded-xl border border-red-300 bg-white px-4 font-bold text-red-800" onClick={() => close()}>Close session</button> : <button className="rounded-xl bg-[var(--espresso)] px-5 font-bold text-white" onClick={open}>Open coffee session</button>}
-      </header>
-      {message ? <p aria-live="polite" className="mb-4 rounded-xl bg-white p-3 text-sm font-bold">{message}</p> : null}
-      {!board?.session ? <div className="rounded-3xl bg-[var(--paper)] p-8 text-center"><h2 className="text-2xl font-black">Ordering is closed</h2><p className="mt-2 text-black/55">Open a session when you’re ready to make coffee.</p></div> : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {active.filter((order) => order.status !== "ready").map((order) => (
-            <article className="rounded-3xl bg-[var(--paper)] p-5 shadow-sm" key={order.id}>
-              <div className="flex items-start justify-between gap-3"><div><h2 className="text-2xl font-black">{order.customerName}</h2><p className="mt-1 text-lg">{order.temperature === "iced" ? "Iced" : "Hot"} {order.drink}</p>{order.note ? <p className="mt-2 text-black/55">“{order.note}”</p> : null}</div><span className="rounded-full bg-white px-3 py-1 text-xs font-bold">{order.status === "ordered" ? "Just ordered" : "In progress"}</span></div>
-              <button className="mt-5 w-full rounded-2xl bg-[var(--coffee)] p-4 font-black text-white" onClick={() => advance(order)}>{order.status === "ordered" ? "Start making" : "Mark ready"}</button>
-            </article>
-          ))}
-          {active.filter((order) => order.status !== "ready").length === 0 ? <p className="col-span-full py-16 text-center text-black/45">No drinks waiting. Tiny café zen.</p> : null}
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6">
+          <Link className="flex items-center gap-3" href="/">
+            <span className="brand-mark">S</span>
+            <div><p className="font-black leading-tight">Sozo Coffee</p><p className="text-xs text-[var(--muted)]">Barista station</p></div>
+          </Link>
+          {board?.session ? (
+            <button className="secondary-action min-h-10 px-4 text-sm text-red-700" onClick={() => close()}>Close session</button>
+          ) : (
+            <button className="primary-action min-h-10 px-5 text-sm" onClick={open}>Open session</button>
+          )}
         </div>
-      )}
-    </main>
+      </header>
+
+      <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
+          <div><p className="eyebrow">Live operations</p><h1 className="mt-2 text-4xl font-black tracking-[-0.045em] sm:text-5xl">Coffee queue</h1></div>
+          <div className="flex gap-2">
+            <div className="rounded-xl bg-white px-4 py-3 text-center"><strong className="block text-2xl">{waiting.length}</strong><span className="text-xs text-[var(--muted)]">Waiting</span></div>
+            <div className="rounded-xl bg-white px-4 py-3 text-center"><strong className="block text-2xl">{making.length}</strong><span className="text-xs text-[var(--muted)]">Making</span></div>
+          </div>
+        </div>
+
+        {message ? <p aria-live="polite" className="mb-5 rounded-xl bg-[var(--green-soft)] p-3 text-sm font-bold text-[var(--green)]">{message}</p> : null}
+
+        {!board?.session ? (
+          <section className="panel grid min-h-80 place-items-center p-8 text-center">
+            <div><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[var(--surface-soft)] text-3xl">☕</span><h2 className="mt-6 text-3xl font-black tracking-tight">Ready when you are.</h2><p className="mt-2 text-[var(--muted)]">Open a session to start taking orders.</p><button className="primary-action mt-6 px-7" onClick={open}>Open coffee session</button></div>
+          </section>
+        ) : (
+          <div className="grid gap-6 xl:grid-cols-2">
+            {[
+              { title: "Just ordered", orders: waiting, color: "bg-[var(--orange)]" },
+              { title: "In progress", orders: making, color: "bg-[var(--coffee)]" },
+            ].map((column) => (
+              <section key={column.title}>
+                <div className="mb-3 flex items-center gap-2 px-1"><span className={`h-2.5 w-2.5 rounded-full ${column.color}`} /><h2 className="font-black">{column.title}</h2><span className="ml-auto rounded-full bg-white px-2.5 py-1 text-xs font-black">{column.orders.length}</span></div>
+                <div className="grid min-h-48 content-start gap-3 rounded-[20px] bg-[var(--surface-soft)] p-3 sm:grid-cols-2">
+                  {column.orders.length === 0 ? <p className="col-span-full grid min-h-44 place-items-center text-sm text-[var(--muted)]">No drinks here right now.</p> : null}
+                  {column.orders.map((order) => (
+                    <article className="rounded-[16px] border border-[var(--line)] bg-white p-5 shadow-sm" key={order.id}>
+                      <div className="flex items-start justify-between gap-3"><div><p className="eyebrow">{order.temperature}</p><h3 className="mt-1 text-2xl font-black tracking-tight">{order.customerName}</h3></div><span className="rounded-lg bg-[var(--canvas)] px-2 py-1 text-xs font-bold">{order.drink}</span></div>
+                      <p className="mt-4 text-lg font-bold">{order.temperature === "iced" ? "Iced" : "Hot"} {order.drink}</p>
+                      {order.note ? <p className="mt-2 rounded-xl bg-[var(--canvas)] p-3 text-sm text-[var(--muted)]">{order.note}</p> : null}
+                      <button className="primary-action mt-5 w-full p-3.5" onClick={() => advance(order)}>{order.status === "ordered" ? "Start making" : "Mark ready"}</button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
