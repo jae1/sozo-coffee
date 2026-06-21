@@ -190,19 +190,42 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
 
                 <fieldset className="mt-8">
                   <legend className="text-lg font-black">2. 음료</legend>
-                  <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
-                    {board.menu.map((item) => (
-                      <button
-                        className="choice-card flex min-h-[4.5rem] flex-col items-start justify-between p-4 text-left font-extrabold sm:min-h-24"
-                        data-selected={menuItemId === item.id}
-                        key={item.id}
-                        onClick={() => setMenuItemId(item.id)}
-                        type="button"
-                      >
-                        <span className="text-base leading-tight">{item.displayName}</span>
-                        <span aria-hidden="true" className={`mt-2 h-4 w-4 rounded-full border-2 ${menuItemId === item.id ? "border-white bg-white" : "border-[var(--line)]"}`} />
-                      </button>
-                    ))}
+                  <div className="mt-4 grid gap-3">
+                    {board.menu.map((item) => {
+                      const imgMap: Record<string, string> = {
+                        americano: "/americano.png",
+                        latte: "/latte.png",
+                        mocha: "/mocha.png",
+                      };
+                      return (
+                        <button
+                          className="drink-card w-full"
+                          data-selected={menuItemId === item.id}
+                          key={item.id}
+                          onClick={() => setMenuItemId(item.id)}
+                          type="button"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img alt={item.displayName} className="drink-card__img" src={imgMap[item.id] ?? "/americano.png"} />
+                          <div className="flex-1 text-left">
+                            <p className="text-lg font-bold leading-tight">{item.displayName}</p>
+                            <p className="mt-0.5 text-sm text-[var(--muted)]">
+                              {item.id === "americano" ? "에스프레소 + 물" : item.id === "latte" ? "에스프레소 + 우유" : "에스프레소 + 초콜릿 + 우유"}
+                            </p>
+                          </div>
+                          <span
+                            aria-hidden="true"
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${menuItemId === item.id ? "border-[var(--sbx-green)] bg-[var(--sbx-green)]" : "border-[var(--line)]"}`}
+                          >
+                            {menuItemId === item.id && (
+                              <svg className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </fieldset>
 

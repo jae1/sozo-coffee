@@ -1,20 +1,23 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap");
 
 :root {
-  --ink: #151513;
-  --muted: #6f6d66;
-  --canvas: #f4f3ee;
-  --surface: #ffffff;
-  --surface-soft: #ebe9e1;
-  --line: #dedcd3;
-  --coffee: #5b3526;
-  --coffee-dark: #342018;
-  --latte: #d9b895;
-  --green: #285943;
-  --green-soft: #dfece3;
-  --orange: #a84d20;
-  --orange-soft: #f4e5db;
-  --shadow: 0 1px 2px rgb(20 20 18 / 7%), 0 12px 36px rgb(20 20 18 / 6%);
+  --sbx-green:       #00704A;   /* Starbucks primary green */
+  --sbx-green-dark:  #1e3932;   /* Starbucks dark green */
+  --sbx-green-light: #d4e9e2;   /* selection / soft bg */
+  --sbx-green-hover: #005f3d;
+  --canvas:          #f2f0eb;   /* warm cream background */
+  --surface:         #ffffff;
+  --surface-soft:    #f9f8f5;
+  --line:            #e3e3e3;
+  --ink:             #1e3932;   /* dark green for headings */
+  --muted:           #6b6b6b;
+  --orange:          #a84d20;
+  --orange-soft:     #f4e5db;
+  --shadow-card:     0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-sm:       0 1px 3px rgba(0,0,0,0.08);
+  --radius-card:     18px;
+  --radius-btn:      999px;     /* pill buttons like Starbucks */
 }
 
 * {
@@ -29,152 +32,156 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Lato", Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { min-height: 44px; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--sbx-green); outline-offset: 3px; }
 
-button,
-a,
-input,
-select,
-textarea {
-  min-height: 48px;
-}
-
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button {
-  cursor: pointer;
-}
-
-:focus-visible {
-  outline: 3px solid #2176d2;
-  outline-offset: 3px;
-}
-
-.app-shell {
-  min-height: 100vh;
-}
+/* ─── Shell ─────────────────────────────────── */
+.app-shell { min-height: 100vh; }
 
 .topbar {
   position: sticky;
   z-index: 20;
   top: 0;
   border-bottom: 1px solid var(--line);
-  background: rgb(255 255 255 / 92%);
-  backdrop-filter: blur(14px);
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(16px);
 }
 
+/* Brand mark — green circle like Starbucks logo area */
 .brand-mark {
   display: grid;
   width: 40px;
   height: 40px;
   place-items: center;
-  border-radius: 12px;
-  background: var(--ink);
+  border-radius: 50%;
+  background: var(--sbx-green-dark);
   color: white;
   font-weight: 900;
-  letter-spacing: -0.08em;
+  font-size: 1.1rem;
 }
 
+/* ─── Cards ──────────────────────────────────── */
 .panel {
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
 }
 
+/* Starbucks-style menu item card */
+.drink-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  padding: 16px;
+  text-align: left;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 120ms ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.drink-card:hover {
+  border-color: #bbb;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.drink-card:active { transform: scale(0.99); }
+
+.drink-card[data-selected="true"] {
+  border-color: var(--sbx-green);
+  box-shadow: 0 0 0 2px var(--sbx-green);
+}
+
+.drink-card__img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--sbx-green-dark);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* Simple toggle choice (member / guest, hot / iced) */
 .choice-card {
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
   background: var(--surface);
   transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+  box-shadow: var(--shadow-sm);
 }
 
-.choice-card:hover {
-  border-color: #aaa79d;
-}
-
-.choice-card:active {
-  transform: scale(0.985);
-}
+.choice-card:hover { border-color: #aaa; }
+.choice-card:active { transform: scale(0.985); }
 
 .choice-card[data-selected="true"] {
-  border-color: var(--ink);
-  background: var(--ink);
+  border-color: var(--sbx-green);
+  background: var(--sbx-green);
   color: white;
 }
 
+/* ─── Buttons ────────────────────────────────── */
 .primary-action {
-  border: 1px solid var(--ink);
-  border-radius: 14px;
-  background: var(--ink);
+  border: none;
+  border-radius: var(--radius-btn);
+  background: var(--sbx-green);
   color: white;
-  font-weight: 800;
-  transition: background 140ms ease, transform 140ms ease;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  transition: background 150ms ease, transform 120ms ease;
 }
 
-.primary-action:hover {
-  background: #33332f;
-}
-
-.primary-action:active {
-  transform: scale(0.99);
-}
-
-.primary-action:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+.primary-action:hover { background: var(--sbx-green-hover); }
+.primary-action:active { transform: scale(0.99); }
+.primary-action:disabled { cursor: not-allowed; opacity: 0.5; }
 
 .secondary-action {
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  border: 1.5px solid var(--sbx-green);
+  border-radius: var(--radius-btn);
   background: white;
-  color: var(--ink);
-  font-weight: 750;
+  color: var(--sbx-green);
+  font-weight: 700;
+  transition: background 150ms ease;
 }
 
+.secondary-action:hover {
+  background: var(--sbx-green-light);
+}
+
+/* ─── Form fields ────────────────────────────── */
 .field {
   width: 100%;
-  border: 1px solid #c9c7bf;
-  border-radius: 14px;
+  border: 1.5px solid #c9c7bf;
+  border-radius: 10px;
   background: white;
   padding: 0 14px;
+  transition: border-color 150ms ease;
 }
 
-textarea.field {
-  padding-block: 12px;
-}
+.field:focus { border-color: var(--sbx-green); outline: none; }
 
+textarea.field { padding-block: 12px; }
+
+/* ─── Misc ───────────────────────────────────── */
 .eyebrow {
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-@media (max-width: 639px) {
-  .panel {
-    border-radius: 18px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
