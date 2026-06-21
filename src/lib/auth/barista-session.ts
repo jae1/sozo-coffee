@@ -11,7 +11,10 @@ function secret() {
 }
 
 export async function verifyPin(pin: string) {
-  const hash = process.env.BARISTA_PIN_HASH;
+  let hash = process.env.BARISTA_PIN_HASH;
+  if (process.env.BARISTA_PIN_HASH_B64) {
+    hash = Buffer.from(process.env.BARISTA_PIN_HASH_B64, 'base64').toString('utf8');
+  }
   if (!hash) throw new Error("BARISTA_PIN_HASH is not configured.");
   return bcrypt.compare(pin, hash);
 }
