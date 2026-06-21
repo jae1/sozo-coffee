@@ -1,14 +1,14 @@
 import type { BoardOrder, OrderStatus } from "@/types/coffee";
 
 const sections: { status: OrderStatus; label: string; color: string; empty: string }[] = [
-  { status: "ordered", label: "Just ordered", color: "bg-[var(--orange)]", empty: "New drinks will land here." },
-  { status: "in_progress", label: "In progress", color: "bg-[var(--coffee)]", empty: "The barista is ready." },
-  { status: "ready", label: "Ready", color: "bg-[var(--green)]", empty: "Finished drinks appear here." },
+  { status: "ordered", label: "주문 접수", color: "bg-[var(--orange)]", empty: "주문이 없습니다." },
+  { status: "in_progress", label: "만드는 중", color: "bg-[var(--coffee)]", empty: "만들고 있는 음료가 없습니다." },
+  { status: "ready", label: "준비 완료", color: "bg-[var(--green)]", empty: "준비된 음료가 없습니다." },
 ];
 
 export function SharedBoard({ orders }: { orders: BoardOrder[] }) {
   return (
-    <section aria-label="Coffee queue" className="grid gap-4 xl:grid-cols-3">
+    <section aria-label="주문 현황" className="grid gap-4 xl:grid-cols-3">
       {sections.map(({ status, label, color, empty }) => {
         const items = orders.filter((order) => order.status === status);
         return (
