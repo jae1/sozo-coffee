@@ -15,6 +15,10 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
   const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const selectedDrink = board.menu.find((item) => item.id === menuItemId);
+  const selectedName = identityType === "member"
+    ? board.members.find((member) => member.id === memberId)?.displayName
+    : guestName.trim();
 
   async function refresh() {
     const response = await fetch("/api/board", { cache: "no-store" });
@@ -74,9 +78,18 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto max-w-[1440px] px-4 py-6 pb-32 sm:px-6 sm:py-8 lg:pb-8">
         <div className="mb-7">
           <h1 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">커피 주문</h1>
+          <div className="mt-5 flex max-w-md items-center gap-2" aria-label="주문 단계">
+            {["이름", "음료", "온도"].map((step, index) => (
+              <div className="flex flex-1 items-center gap-2" key={step}>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-xs font-black text-white">{index + 1}</span>
+                <span className="text-xs font-bold text-[var(--muted)]">{step}</span>
+                {index < 2 ? <span className="ml-auto h-px flex-1 bg-[var(--line)]" /> : null}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
@@ -124,8 +137,29 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
               <textarea className="field mt-3 resize-none" maxLength={120} placeholder="얼음 적게 등" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
 
-            <button className="primary-action mt-6 w-full p-4" disabled={pending} type="submit">{pending ? "주문 중…" : "주문하기"}</button>
+            <div className="mt-7 rounded-2xl bg-[var(--surface-soft)] p-4">
+              <p className="text-xs font-bold text-[var(--muted)]">주문 내용</p>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <div>
+                  <p className="font-black">{temperature === "iced" ? "Iced" : "Hot"} {selectedDrink?.displayName}</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">{selectedName || "이름을 입력해 주세요"}</p>
+                </div>
+                {note ? <span className="max-w-32 truncate text-xs text-[var(--muted)]">{note}</span> : null}
+              </div>
+            </div>
+
+            <button className="primary-action mt-4 hidden w-full p-4 lg:block" disabled={pending} type="submit">{pending ? "주문 중…" : "주문하기"}</button>
             {message ? <p aria-live="polite" className="mt-3 rounded-xl bg-[var(--green-soft)] p-3 text-center text-sm font-extrabold text-[var(--green)]">{message}</p> : null}
+
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white p-3 shadow-[0_-8px_30px_rgb(20_20_18/8%)] lg:hidden">
+              <div className="mx-auto flex max-w-lg items-center gap-3">
+                <div className="min-w-0 flex-1 pl-1">
+                  <p className="truncate text-sm font-black">{temperature === "iced" ? "Iced" : "Hot"} {selectedDrink?.displayName}</p>
+                  <p className="truncate text-xs text-[var(--muted)]">{selectedName || "이름을 선택해 주세요"}</p>
+                </div>
+                <button className="primary-action min-w-32 px-5" disabled={pending} type="submit">{pending ? "주문 중…" : "주문하기"}</button>
+              </div>
+            </div>
           </form>
 
           <section>
