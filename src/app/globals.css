@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap");
 
 :root {
   --sbx-green:       #00704A;   /* Starbucks primary green */
@@ -32,7 +31,6 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font-family: "Lato", Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
