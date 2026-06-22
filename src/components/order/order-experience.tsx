@@ -2,13 +2,14 @@
 
 import { SharedBoard } from "@/components/board/shared-board";
 import type { BoardData } from "@/types/coffee";
+import type { MemberSession } from "@/lib/auth/member-session";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
-export function OrderExperience({ initial }: { initial: BoardData }) {
+export function OrderExperience({ initial, memberSession }: { initial: BoardData; memberSession: MemberSession | null }) {
   const [board, setBoard] = useState(initial);
   const [identityType, setIdentityType] = useState<"member" | "guest">("member");
-  const [memberId, setMemberId] = useState(initial.members[0]?.id ?? "");
+  const [memberId, setMemberId] = useState(memberSession?.memberId ?? initial.members[0]?.id ?? "");
   const [guestName, setGuestName] = useState("");
   const [menuItemId, setMenuItemId] = useState<"americano" | "latte" | "mocha">("americano");
   const [temperature, setTemperature] = useState<"hot" | "iced">("hot");
@@ -19,9 +20,9 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
   const [pushSubscription, setPushSubscription] = useState<PushSubscriptionJSON | null>(null);
   const [notificationMessage, setNotificationMessage] = useState("");
   const selectedDrink = board.menu.find((item) => item.id === menuItemId);
-  const selectedName = identityType === "member"
+  const selectedName = memberSession?.displayName ?? (identityType === "member"
     ? board.members.find((member) => member.id === memberId)?.displayName
-    : guestName.trim();
+    : guestName.trim());
 
   async function refresh() {
     const response = await fetch("/api/board", { cache: "no-store" });
@@ -92,7 +93,11 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         requestId: crypto.randomUUID(),
-        identity: identityType === "member" ? { type: "member", memberId } : { type: "guest", name: guestName },
+        identity: memberSession
+          ? { type: "member", memberId: memberSession.memberId }
+          : identityType === "member"
+            ? { type: "member", memberId }
+            : { type: "guest", name: guestName },
         menuItemId,
         temperature,
         note,
@@ -133,9 +138,14 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
               <p className="text-xs text-[var(--muted)]">커피 주문</p>
             </div>
           </Link>
-          <span className="flex items-center gap-2 rounded-full bg-[var(--green-soft)] px-3 py-2 text-xs font-extrabold text-[var(--green)]">
-            <span className="h-2 w-2 rounded-full bg-[var(--green)]" /> 주문 가능
-          </span>
+          <div className="flex items-center gap-2">
+            <Link className="rounded-full border border-[var(--line)] px-3 py-2 text-xs font-bold" href="/account">
+              {memberSession ? memberSession.displayName : "로그인"}
+            </Link>
+            <span className="hidden items-center gap-2 rounded-full bg-[var(--green-soft)] px-3 py-2 text-xs font-extrabold text-[var(--green)] sm:flex">
+              <span className="h-2 w-2 rounded-full bg-[var(--green)]" /> 주문 가능
+            </span>
+          </div>
         </div>
       </header>
 
@@ -175,17 +185,24 @@ export function OrderExperience({ initial }: { initial: BoardData }) {
               <div className="panel p-5 sm:p-7">
                 <fieldset>
                   <legend className="text-lg font-black">1. 이름</legend>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <button className="choice-card px-4 font-bold" data-selected={identityType === "member"} onClick={() => setIdentityType("member")} type="button">멤버</button>
-                    <button className="choice-card px-4 font-bold" data-selected={identityType === "guest"} onClick={() => setIdentityType("guest")} type="button">게스트</button>
-                  </div>
-                  {identityType === "member" ? (
+                  {memberSession ? (
+                    <div className="mt-4 flex items-center justify-between rounded-xl bg-[var(--green-soft)] px-4 py-4">
+                      <div><p className="font-black">{memberSession.displayName}</p><p className="text-xs text-[var(--muted)]">@{memberSession.username}</p></div>
+                      <Link className="text-sm font-bold text-[var(--sbx-green)]" href="/account">계정</Link>
+                    </div>
+                  ) : (
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <button className="choice-card px-4 font-bold" data-selected={identityType === "member"} onClick={() => setIdentityType("member")} type="button">멤버</button>
+                      <button className="choice-card px-4 font-bold" data-selected={identityType === "guest"} onClick={() => setIdentityType("guest")} type="button">게스트</button>
+                    </div>
+                  )}
+                  {!memberSession && identityType === "member" ? (
                     <select aria-label="이름 선택" className="field mt-3" required value={memberId} onChange={(e) => setMemberId(e.target.value)}>
                       {board.members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
                     </select>
-                  ) : (
+                  ) : !memberSession ? (
                     <input aria-label="게스트 이름" className="field mt-3" maxLength={40} placeholder="이름" required value={guestName} onChange={(e) => setGuestName(e.target.value)} />
-                  )}
+                  ) : null}
                 </fieldset>
 
                 <fieldset className="mt-8">

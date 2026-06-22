@@ -40,4 +40,33 @@ export const statusTransitionSchema = z.object({
   to: z.enum(["ordered", "in_progress", "ready"]),
 });
 
+const usernameSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,20}$/);
+const memberPinSchema = z.string().regex(/^\d{6}$/);
+
+export const memberSignupSchema = z.object({
+  displayName: z.string().trim().min(1).max(40),
+  username: usernameSchema,
+  pin: memberPinSchema,
+  pinConfirm: memberPinSchema,
+  inviteCode: z.string().min(1),
+}).refine((value) => value.pin === value.pinConfirm, {
+  message: "PIN confirmation does not match.",
+  path: ["pinConfirm"],
+});
+
+export const memberLoginSchema = z.object({
+  username: usernameSchema,
+  pin: memberPinSchema,
+});
+
+export const memberRecoverySchema = z.object({
+  username: usernameSchema,
+  recoveryCode: z.string().trim().min(8).max(32),
+  newPin: memberPinSchema,
+  newPinConfirm: memberPinSchema,
+}).refine((value) => value.newPin === value.newPinConfirm, {
+  message: "PIN confirmation does not match.",
+  path: ["newPinConfirm"],
+});
+
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

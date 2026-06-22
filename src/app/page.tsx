@@ -17,6 +17,10 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-col justify-center gap-4 bg-[var(--canvas)] p-6 sm:p-12">
+            <Link className="group panel flex min-h-24 items-center justify-between p-6 transition-transform hover:-translate-y-0.5" href="/account">
+              <h2 className="text-xl font-black tracking-tight">로그인 / 가입</h2>
+              <ArrowIcon />
+            </Link>
             <Link className="group panel flex min-h-36 items-center justify-between p-6 transition-transform hover:-translate-y-0.5" href="/order">
               <div>
                 <span className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[var(--green-soft)] text-xl">☕</span>
