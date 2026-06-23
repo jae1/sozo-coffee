@@ -4,14 +4,33 @@ import { SharedBoard } from "@/components/board/shared-board";
 import type { BoardData } from "@/types/coffee";
 import type { MemberSession } from "@/lib/auth/member-session";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { SiteHeader } from "@/components/layout/site-header";
+
+type CartItem = {
+  id: string;
+  menuItemId: "americano" | "latte" | "mocha";
+  drinkName: string;
+  temperature: "hot" | "iced";
+  note: string;
+};
+
+function subscribeToBrowser() {
+  return () => {};
+}
+
+function getIOSSafariSnapshot() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = "standalone" in navigator && (navigator as { standalone?: boolean }).standalone === true;
+  return isIOS && !isStandalone;
+}
 
 export function OrderExperience({ initial, memberSession }: { initial: BoardData; memberSession: MemberSession | null }) {
   const [board, setBoard] = useState(initial);
   const [identityType, setIdentityType] = useState<"member" | "guest">("member");
   const [memberId, setMemberId] = useState(memberSession?.memberId ?? initial.members[0]?.id ?? "");
   const [guestName, setGuestName] = useState("");
-  const [menuItemId, setMenuItemId] = useState<"americano" | "latte" | "mocha">("americano");
+  const [menuItemId, setMenuItemId] = useState<"americano" | "latte" | "mocha" | null>(null);
   const [temperature, setTemperature] = useState<"hot" | "iced">("hot");
   const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
@@ -19,10 +38,11 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
   const [activeTab, setActiveTab] = useState<"order" | "status">("order");
   const [pushSubscription, setPushSubscription] = useState<PushSubscriptionJSON | null>(null);
   const [notificationMessage, setNotificationMessage] = useState("");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartToast, setCartToast] = useState("");
+  const cartToastTimer = useRef<number | null>(null);
+  const isIOSSafari = useSyncExternalStore(subscribeToBrowser, getIOSSafariSnapshot, () => false);
   const selectedDrink = board.menu.find((item) => item.id === menuItemId);
-  const selectedName = memberSession?.displayName ?? (identityType === "member"
-    ? board.members.find((member) => member.id === memberId)?.displayName
-    : guestName.trim());
 
   async function refresh() {
     const response = await fetch("/api/board", { cache: "no-store" });
@@ -43,29 +63,25 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
     };
   }, []);
 
-  const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isStandalone = typeof navigator !== "undefined" && "standalone" in navigator && (navigator as { standalone?: boolean }).standalone === true;
-  const isIOSSafari = isIOS && !isStandalone;
-
   async function enableNotifications() {
     // iOS Safari does not support Web Push — must be installed as PWA
     if (isIOSSafari) {
-      setNotificationMessage("홈 화면에 추가 후 앱으로 열어주세요.");
+      setNotificationMessage("Add this site to your Home Screen, then open the app.");
       return;
     }
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setNotificationMessage("이 브라우저에서는 알림을 사용할 수 없습니다.");
+      setNotificationMessage("Notifications are not supported in this browser.");
       return;
     }
     const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!publicKey) {
-      setNotificationMessage("알림 설정이 아직 완료되지 않았습니다.");
+      setNotificationMessage("Notifications have not been configured yet.");
       return;
     }
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        setNotificationMessage("알림 권한이 필요합니다.");
+        setNotificationMessage("Notification permission is required.");
         return;
       }
       const registration = await navigator.serviceWorker.register("/sw.js");
@@ -78,40 +94,68 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
         ),
       });
       setPushSubscription(subscription.toJSON());
-      setNotificationMessage("준비 완료 알림을 받습니다.");
+      setNotificationMessage("Pickup notifications are on.");
     } catch {
-      setNotificationMessage("알림을 설정하지 못했습니다.");
+      setNotificationMessage("Notifications could not be enabled.");
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (cart.length === 0) {
+      setMessage("Add a drink to your order first.");
+      return;
+    }
     setPending(true);
     setMessage("");
-    const response = await fetch("/api/orders", {
+    const identity = memberSession
+      ? { type: "member", memberId: memberSession.memberId }
+      : identityType === "member"
+        ? { type: "member", memberId }
+        : { type: "guest", name: guestName };
+    const responses = await Promise.all(cart.map((item) => fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         requestId: crypto.randomUUID(),
-        identity: memberSession
-          ? { type: "member", memberId: memberSession.memberId }
-          : identityType === "member"
-            ? { type: "member", memberId }
-            : { type: "guest", name: guestName },
-        menuItemId,
-        temperature,
-        note,
+        identity,
+        menuItemId: item.menuItemId,
+        temperature: item.temperature,
+        note: item.note,
         pushSubscription,
       }),
-    });
-    const payload = await response.json().catch(() => null);
+    })));
     setPending(false);
-    if (!response.ok) return setMessage(payload?.error?.message ?? "주문하지 못했습니다. 다시 시도해 주세요.");
-    setMessage("주문이 접수되었습니다.");
+    if (responses.some((response) => !response.ok)) {
+      setMessage("Some drinks could not be ordered. Check your order status.");
+      await refresh();
+      setActiveTab("status");
+      return;
+    }
+    setMessage(`Your order for ${cart.length} ${cart.length === 1 ? "drink" : "drinks"} has been placed.`);
+    setCart([]);
     setNote("");
     await refresh();
     setActiveTab("status");
     setTimeout(() => setMessage(""), 3000);
+  }
+
+  function addToCart() {
+    if (!selectedDrink || !menuItemId) return;
+    setCart((items) => [...items, {
+      id: crypto.randomUUID(),
+      menuItemId,
+      drinkName: selectedDrink.displayName,
+      temperature,
+      note: note.trim(),
+    }]);
+    setNote("");
+    setCartToast(`${temperature === "iced" ? "Iced" : "Hot"} ${selectedDrink.displayName} added.`);
+    if (cartToastTimer.current) window.clearTimeout(cartToastTimer.current);
+    cartToastTimer.current = window.setTimeout(() => {
+      setCartToast("");
+      cartToastTimer.current = null;
+    }, 5000);
   }
 
   if (!board.session) {
@@ -119,9 +163,9 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
       <main className="app-shell grid place-items-center p-5">
         <section className="panel w-full max-w-lg p-8 text-center sm:p-12">
           <p className="text-sm font-bold text-[var(--muted)]">Sozo Coffee</p>
-          <h1 className="mt-3 text-3xl font-black">지금은 주문을 받지 않습니다.</h1>
-          <p className="mx-auto mt-4 max-w-sm leading-6 text-[var(--muted)]">바리스타가 카페를 열면 이 화면에서 주문할 수 있습니다.</p>
-          <Link className="secondary-action mt-7 inline-flex items-center justify-center px-6" href="/">처음으로</Link>
+          <h1 className="mt-3 text-3xl font-black">We’re currently closed.</h1>
+          <p className="mx-auto mt-4 max-w-sm leading-6 text-[var(--muted)]">You can order here when the café opens.</p>
+          <Link className="secondary-action mt-7 inline-flex items-center justify-center px-6" href="/">Go home</Link>
         </section>
       </main>
     );
@@ -129,49 +173,47 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6">
-          <Link className="flex items-center gap-3" href="/">
-            <span className="brand-mark">S</span>
-            <div>
-              <p className="font-black leading-tight">Sozo Coffee</p>
-              <p className="text-xs text-[var(--muted)]">커피 주문</p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link className="rounded-full border border-[var(--line)] px-3 py-2 text-xs font-bold" href="/account">
-              {memberSession ? memberSession.displayName : "로그인"}
+      <SiteHeader
+        actions={
+          <>
+            <Link className="site-account-button" href="/account">
+              {memberSession ? memberSession.displayName : "Sign in"}
             </Link>
-            <span className="hidden items-center gap-2 rounded-full bg-[var(--green-soft)] px-3 py-2 text-xs font-extrabold text-[var(--green)] sm:flex">
-              <span className="h-2 w-2 rounded-full bg-[var(--green)]" /> 주문 가능
-            </span>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+        section="Order & Pickup"
+      />
 
       <main className="mx-auto max-w-[1440px] px-4 py-6 pb-32 sm:px-6 sm:py-8 lg:pb-10">
-        <div className="mb-7">
-          <h1 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">커피 주문</h1>
+        <div className="order-hero mb-6 overflow-hidden rounded-[28px]">
+          <div className="relative z-10 max-w-xl px-6 py-8 sm:px-10 sm:py-11">
+            <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/70">SOZO COFFEE</p>
+            <h1 className="text-4xl font-black tracking-[-0.05em] text-white sm:text-5xl">What are you<br />drinking today?</h1>
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-bold text-white backdrop-blur">
+              <span className="h-2 w-2 rounded-full bg-[#80d6a7]" />
+              Open now · Pickup
+            </div>
+          </div>
         </div>
 
         {/* Tab switcher */}
-        <div className="mb-6 grid grid-cols-2 rounded-2xl bg-[var(--surface-soft)] p-1.5">
+        <div className="order-tabs mb-7 flex gap-7 border-b border-[var(--line)]">
           <button
-            className={`rounded-xl px-4 py-3 font-black ${activeTab === "order" ? "bg-white shadow-sm" : "text-[var(--muted)]"}`}
+            className={`order-tab px-1 pb-3 font-black ${activeTab === "order" ? "is-active" : "text-[var(--muted)]"}`}
             onClick={() => setActiveTab("order")}
             type="button"
           >
-            주문하기
+            Menu
           </button>
           <button
-            className={`rounded-xl px-4 py-3 font-black ${activeTab === "status" ? "bg-white shadow-sm" : "text-[var(--muted)]"}`}
+            className={`order-tab px-1 pb-3 font-black ${activeTab === "status" ? "is-active" : "text-[var(--muted)]"}`}
             onClick={() => {
               setActiveTab("status");
               void refresh();
             }}
             type="button"
           >
-            주문 현황
+            Order Status
             {board.orders.length > 0 ? <span className="ml-2 rounded-full bg-[var(--ink)] px-2 py-0.5 text-xs text-white">{board.orders.length}</span> : null}
           </button>
         </div>
@@ -182,32 +224,31 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
             <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
 
               {/* Left: input fields */}
-              <div className="panel p-5 sm:p-7">
-                <fieldset>
-                  <legend className="text-lg font-black">1. 이름</legend>
-                  {memberSession ? (
-                    <div className="mt-4 flex items-center justify-between rounded-xl bg-[var(--green-soft)] px-4 py-4">
-                      <div><p className="font-black">{memberSession.displayName}</p><p className="text-xs text-[var(--muted)]">@{memberSession.username}</p></div>
-                      <Link className="text-sm font-bold text-[var(--sbx-green)]" href="/account">계정</Link>
-                    </div>
-                  ) : (
+              <div>
+                {!memberSession ? (
+                  <fieldset className="panel mb-6 p-5 sm:p-6">
+                    <legend className="text-lg font-black">Name</legend>
                     <div className="mt-4 grid grid-cols-2 gap-2">
-                      <button className="choice-card px-4 font-bold" data-selected={identityType === "member"} onClick={() => setIdentityType("member")} type="button">멤버</button>
-                      <button className="choice-card px-4 font-bold" data-selected={identityType === "guest"} onClick={() => setIdentityType("guest")} type="button">게스트</button>
+                      <button className="choice-card px-4 font-bold" data-selected={identityType === "member"} onClick={() => setIdentityType("member")} type="button">Member</button>
+                      <button className="choice-card px-4 font-bold" data-selected={identityType === "guest"} onClick={() => setIdentityType("guest")} type="button">Guest</button>
                     </div>
-                  )}
-                  {!memberSession && identityType === "member" ? (
-                    <select aria-label="이름 선택" className="field mt-3" required value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-                      {board.members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
-                    </select>
-                  ) : !memberSession ? (
-                    <input aria-label="게스트 이름" className="field mt-3" maxLength={40} placeholder="이름" required value={guestName} onChange={(e) => setGuestName(e.target.value)} />
-                  ) : null}
-                </fieldset>
+                    {identityType === "member" ? (
+                      <select aria-label="Select your name" className="field mt-3" required value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+                        {board.members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
+                      </select>
+                    ) : (
+                      <input aria-label="Guest name" className="field mt-3" maxLength={40} placeholder="Your name" required value={guestName} onChange={(e) => setGuestName(e.target.value)} />
+                    )}
+                  </fieldset>
+                ) : null}
 
-                <fieldset className="mt-8">
-                  <legend className="text-lg font-black">2. 음료</legend>
-                  <div className="mt-4 grid gap-3">
+                <fieldset>
+                  <div className="mb-4 flex items-end justify-between">
+                    <div>
+                      <legend className="text-2xl font-black tracking-tight">Choose your drink</legend>
+                    </div>
+                  </div>
+                  <div className="menu-grid grid gap-3 sm:grid-cols-3">
                     {board.menu.map((item) => {
                       const imgMap: Record<string, string> = {
                         americano: "/americano.png",
@@ -226,9 +267,6 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
                           <img alt={item.displayName} className="drink-card__img" src={imgMap[item.id] ?? "/americano.png"} />
                           <div className="flex-1 text-left">
                             <p className="text-lg font-bold leading-tight">{item.displayName}</p>
-                            <p className="mt-0.5 text-sm text-[var(--muted)]">
-                              {item.id === "americano" ? "에스프레소 + 물" : item.id === "latte" ? "에스프레소 + 우유" : "에스프레소 + 초콜릿 + 우유"}
-                            </p>
                           </div>
                           <span
                             aria-hidden="true"
@@ -246,9 +284,10 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
                   </div>
                 </fieldset>
 
-                <fieldset className="mt-8">
-                  <legend className="text-lg font-black">3. 온도</legend>
-                  <div className="mt-4 grid grid-cols-2 gap-2.5">
+                {selectedDrink ? <div className="panel mt-6 p-5 sm:p-6">
+                <fieldset>
+                  <legend className="text-lg font-black">Choose a temperature</legend>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
                     {(["hot", "iced"] as const).map((value) => (
                       <button
                         className="choice-card min-h-14 px-4 text-lg font-extrabold"
@@ -257,72 +296,59 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
                         onClick={() => setTemperature(value)}
                         type="button"
                       >
-                        {value === "hot" ? "☕ Hot" : "🧊 Iced"}
+                        {value === "hot" ? "Hot" : "Iced"}
                       </button>
                     ))}
                   </div>
                 </fieldset>
 
                 <label className="mt-8 block text-lg font-black">
-                  요청사항 <span className="text-sm font-normal text-[var(--muted)]">(선택)</span>
-                  <textarea className="field mt-3 resize-none" maxLength={120} placeholder="얼음 적게, 샷 추가 등" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                  Special requests <span className="text-sm font-normal text-[var(--muted)]">(optional)</span>
+                  <textarea className="field mt-3 resize-none" maxLength={120} placeholder="Less ice, extra shot, or anything else" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
                 </label>
+                <button className="primary-action mt-5 w-full px-5 py-4 font-black" onClick={addToCart} type="button">
+                  Add to order
+                </button>
+                </div> : null}
               </div>
 
               {/* Right: live order summary + notification + submit */}
               <div className="mt-4 flex flex-col gap-4 lg:mt-0">
                 {/* Order preview card */}
-                <div className="panel p-5 sm:p-6">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">주문 확인</p>
-
-                  <div className="mt-5 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm font-black text-[var(--muted)]">1</span>
-                      <div className="min-w-0">
-                        <p className="text-xs text-[var(--muted)]">이름</p>
-                        <p className={`mt-0.5 truncate font-black ${selectedName ? "" : "text-[var(--muted)]"}`}>
-                          {selectedName || "선택해 주세요"}
-                        </p>
-                      </div>
+                <div className="panel cart-panel p-5 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-black">Review Order</h2>
                     </div>
+                    <span className="rounded-full bg-[var(--green-soft)] px-3 py-1 text-sm font-black text-[var(--green)]">{cart.length}</span>
+                  </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm font-black text-[var(--muted)]">2</span>
-                      <div>
-                        <p className="text-xs text-[var(--muted)]">음료</p>
-                        <p className="mt-0.5 font-black">{selectedDrink?.displayName ?? "—"}</p>
+                  <div className="mt-5 grid gap-2">
+                    {cart.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-[#c9c7bf] p-7 text-center">
+                        <p className="font-black">Your order is empty</p>
+                        <p className="mt-1 text-sm text-[var(--muted)]">Choose a drink from the menu.</p>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm font-black text-[var(--muted)]">3</span>
-                      <div>
-                        <p className="text-xs text-[var(--muted)]">온도</p>
-                        <p className="mt-0.5 font-black">{temperature === "iced" ? "🧊 Iced" : "☕ Hot"}</p>
-                      </div>
-                    </div>
-
-                    {note && (
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm">✏️</span>
-                        <div className="min-w-0">
-                          <p className="text-xs text-[var(--muted)]">요청사항</p>
-                          <p className="mt-0.5 break-words text-sm font-bold">{note}</p>
+                    ) : cart.map((item) => (
+                      <div className="flex items-center gap-3 border-b border-[var(--line)] py-4 last:border-0" key={item.id}>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-black">{item.temperature === "iced" ? "Iced" : "Hot"} {item.drinkName}</p>
+                          {item.note ? <p className="truncate text-xs text-[var(--muted)]">{item.note}</p> : null}
                         </div>
+                        <button
+                          aria-label={`Remove ${item.drinkName}`}
+                          className="min-h-9 px-2 text-sm font-bold text-[var(--muted)] underline"
+                          onClick={() => setCart((items) => items.filter((candidate) => candidate.id !== item.id))}
+                          type="button"
+                        >
+                          Remove
+                        </button>
                       </div>
-                    )}
+                    ))}
                   </div>
 
-                  {/* Final summary pill */}
-                  <div className="mt-6 rounded-xl bg-[var(--surface-soft)] px-4 py-3">
-                    <p className="text-sm font-black">
-                      {temperature === "iced" ? "🧊 Iced" : "☕ Hot"} {selectedDrink?.displayName}
-                    </p>
-                    <p className="mt-0.5 text-xs text-[var(--muted)]">{selectedName || "이름을 선택해 주세요"}</p>
-                  </div>
-
-                  <button className="primary-action mt-4 hidden w-full p-4 text-base lg:flex lg:items-center lg:justify-center" disabled={pending} type="submit">
-                    {pending ? "주문 중…" : "주문하기"}
+                  <button className="primary-action mt-5 hidden w-full p-4 text-base lg:flex lg:items-center lg:justify-center" disabled={pending || cart.length === 0} type="submit">
+                    {pending ? "Placing order…" : "Place order"}
                   </button>
                   {message ? <p aria-live="polite" className="mt-3 rounded-xl bg-[var(--green-soft)] p-3 text-center text-sm font-extrabold text-[var(--green)]">{message}</p> : null}
                 </div>
@@ -331,13 +357,13 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
                 <div className="rounded-2xl border border-[var(--line)] bg-white p-5">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="font-black">준비 완료 알림</p>
+                      <p className="font-black">Pickup notifications</p>
                       {isIOSSafari ? (
                         <p className="mt-1 text-xs text-[var(--muted)]">
-                          공유 버튼 → <strong>홈 화면에 추가</strong> → 앱으로 열기
+                          Tap Share → <strong>Add to Home Screen</strong> → open the app
                         </p>
                       ) : (
-                        <p className="mt-1 text-xs text-[var(--muted)]">커피가 준비되면 알림을 받습니다.</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">Get notified when your order is ready.</p>
                       )}
                     </div>
                     <button
@@ -345,11 +371,11 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
                       onClick={enableNotifications}
                       type="button"
                     >
-                      {pushSubscription ? "설정됨" : isIOSSafari ? "앱으로" : "알림 받기"}
+                      {pushSubscription ? "On" : isIOSSafari ? "Install app" : "Notify me"}
                     </button>
                   </div>
                   {notificationMessage ? (
-                    <p className={`mt-2 text-xs font-bold ${notificationMessage.includes("받습니다") ? "text-[var(--green)]" : "text-[var(--orange)]"}`}>
+                    <p className={`mt-2 text-xs font-bold ${notificationMessage.includes("are on") ? "text-[var(--green)]" : "text-[var(--orange)]"}`}>
                       {notificationMessage}
                     </p>
                   ) : null}
@@ -362,23 +388,39 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
             <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white p-3 shadow-[0_-8px_30px_rgb(20_20_18/8%)] lg:hidden">
               <div className="mx-auto flex max-w-lg items-center gap-3">
                 <div className="min-w-0 flex-1 pl-1">
-                  <p className="truncate text-sm font-black">{temperature === "iced" ? "🧊 Iced" : "☕ Hot"} {selectedDrink?.displayName}</p>
-                  <p className="truncate text-xs text-[var(--muted)]">{selectedName || "이름을 선택해 주세요"}</p>
+                  <p className="truncate text-sm font-black">Your order · {cart.length}</p>
+                  <p className="truncate text-xs text-[var(--muted)]">{cart.length ? "Pickup at the café." : "Choose a drink."}</p>
                 </div>
-                <button className="primary-action min-w-32 px-5" disabled={pending} type="submit">{pending ? "주문 중…" : "주문하기"}</button>
+                <button className="primary-action min-w-32 px-5" disabled={pending || cart.length === 0} type="submit">{pending ? "Placing…" : "Place order"}</button>
               </div>
             </div>
           </form>
         ) : (
           <section>
             <div className="mb-4 flex items-end justify-between gap-4">
-              <h2 className="text-2xl font-black tracking-tight">주문 현황</h2>
-              <p className="text-sm text-[var(--muted)]">총 {board.orders.length}잔</p>
+              <h2 className="text-2xl font-black tracking-tight">Order Status</h2>
+              <p className="text-sm text-[var(--muted)]">{board.orders.length} total</p>
             </div>
             <SharedBoard orders={board.orders} />
           </section>
         )}
       </main>
+      {cartToast ? (
+        <div className="cart-toast" data-testid="cart-toast" role="status">
+          <span>{cartToast}</span>
+          <button
+            aria-label="Dismiss"
+            onClick={() => {
+              if (cartToastTimer.current) window.clearTimeout(cartToastTimer.current);
+              cartToastTimer.current = null;
+              setCartToast("");
+            }}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

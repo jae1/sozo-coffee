@@ -1,7 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CreateOrderInput } from "@/lib/validation/schemas";
 
-export async function createOrder(input: CreateOrderInput) {
+export async function createOrder(
+  input: CreateOrderInput,
+  owner?: { authUserId: string; memberId: string; displayName: string },
+) {
   const db = createAdminClient();
   const { data: existing } = await db.from("orders").select("id").eq("request_id", input.requestId).maybeSingle();
   if (existing) return { kind: "duplicate" as const };
@@ -9,9 +12,11 @@ export async function createOrder(input: CreateOrderInput) {
   const { data: session } = await db.from("coffee_sessions").select("id").eq("status", "open").maybeSingle();
   if (!session) return { kind: "closed" as const };
 
-  let memberId: string | null = null;
+  let memberId: string | null = owner?.memberId ?? null;
   let customerName: string;
-  if (input.identity.type === "member") {
+  if (owner) {
+    customerName = owner.displayName;
+  } else if (input.identity.type === "member") {
     const { data: member } = await db
       .from("members")
       .select("id,display_name,disambiguator")
@@ -46,6 +51,7 @@ export async function createOrder(input: CreateOrderInput) {
       milk: menu.uses_dairy_milk ? "dairy" : null,
       note: input.note || null,
       push_subscription: input.pushSubscription ?? null,
+      auth_user_id: owner?.authUserId ?? null,
     })
     .select("id,status")
     .single();

@@ -1,8 +1,8 @@
 "use client";
 
 import type { BoardData, BoardOrder, OrderStatus } from "@/types/coffee";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SiteHeader } from "@/components/layout/site-header";
 
 function nextStatus(status: OrderStatus) {
   return status === "ordered" ? "in_progress" : status === "in_progress" ? "ready" : null;
@@ -27,7 +27,7 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
 
   async function open() {
     const response = await fetch("/api/barista/sessions", { method: "POST" });
-    setMessage(response.ok ? "카페를 열었습니다." : "카페를 열지 못했습니다.");
+    setMessage(response.ok ? "The café is open." : "The café could not be opened.");
     await refresh();
   }
 
@@ -40,10 +40,10 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
     const payload = await response.json().catch(() => null);
     if (response.status === 409 && payload?.error?.activeOrderCount) {
       const count = payload.error.activeOrderCount;
-      if (window.confirm(`진행 중인 주문이 ${count}건 있습니다. 그래도 카페를 닫을까요?`)) return close(true);
+      if (window.confirm(`${count} active orders remain. Close the café anyway?`)) return close(true);
       return;
     }
-    setMessage(response.ok ? "카페를 닫았습니다." : payload?.error?.message ?? "카페를 닫지 못했습니다.");
+    setMessage(response.ok ? "The café is closed." : payload?.error?.message ?? "The café could not be closed.");
     await refresh();
   }
 
@@ -55,7 +55,7 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ from: order.status, to: requestedStatus }),
     });
-    setMessage(response.ok ? "" : "주문 상태가 변경되었습니다. 다시 확인해 주세요.");
+    setMessage(response.ok ? "" : "This order changed on another screen. Please try again.");
     await refresh();
     setUpdatingOrderId(null);
   }
@@ -86,34 +86,31 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6">
-          <Link className="flex items-center gap-3" href="/">
-            <span className="brand-mark">S</span>
-            <div><p className="font-black leading-tight">Sozo Coffee</p><p className="text-xs text-[var(--muted)]">바리스타</p></div>
-          </Link>
-          {board.session ? (
-            <button className="secondary-action min-h-10 px-4 text-sm text-red-700" onClick={() => close()}>카페 닫기</button>
+      <SiteHeader
+        actions={
+          board.session ? (
+            <button className="secondary-action min-h-10 px-4 text-sm" onClick={() => close()}>Close café</button>
           ) : (
-            <button className="primary-action min-h-10 px-5 text-sm" onClick={open}>카페 열기</button>
-          )}
-        </div>
-      </header>
+            <button className="primary-action min-h-10 px-5 text-sm" onClick={open}>Open café</button>
+          )
+        }
+        section="Barista Station"
+      />
 
-      <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-7"><p className="eyebrow">Barista station</p><h1 className="mt-2 text-4xl font-black tracking-[-0.045em] sm:text-5xl">주문표</h1></div>
+      <main className="page-container">
+        <div className="page-heading"><p className="eyebrow">Barista station</p><h1>Order board</h1><p>Manage orders in the order they arrive.</p></div>
         {message ? <p aria-live="polite" className="mb-5 rounded-xl bg-[var(--green-soft)] p-3 text-sm font-bold text-[var(--green)]">{message}</p> : null}
 
         {!board.session ? (
           <section className="panel grid min-h-80 place-items-center p-8 text-center">
-            <div><h2 className="text-3xl font-black tracking-tight">지금은 카페가 닫혀 있습니다.</h2><button className="primary-action mt-6 px-7" onClick={open}>카페 열기</button></div>
+            <div><p className="eyebrow">Barista station</p><h2 className="mt-3 text-3xl font-black tracking-tight">The café is closed.</h2><button className="primary-action mt-6 px-7" onClick={open}>Open café</button></div>
           </section>
         ) : (
           <div className="mx-auto grid max-w-4xl gap-8">
             <div className="grid grid-cols-2 gap-3">
               {[
-                { status: "in_progress" as const, label: "만드는 중" },
-                { status: "ready" as const, label: "준비 완료" },
+                { status: "in_progress" as const, label: "In progress" },
+                { status: "ready" as const, label: "Ready" },
               ].map((target) => {
                 const accepts = canDrop(target.status);
                 const active = accepts && dropTarget === target.status;
@@ -149,11 +146,11 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
 
             <section>
               <div className="mb-3 flex items-center justify-between px-1">
-                <h2 className="font-black">접수 순서</h2>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-black">{queue.length}잔</span>
+                <h2 className="font-black">Order queue</h2>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-black">{queue.length}</span>
               </div>
               <div className="overflow-hidden rounded-[20px] border border-[var(--line)] bg-white">
-                {queue.length === 0 ? <p className="grid min-h-32 place-items-center text-sm text-[var(--muted)]">대기 중인 주문이 없습니다.</p> : null}
+                {queue.length === 0 ? <p className="grid min-h-32 place-items-center text-sm text-[var(--muted)]">No orders are waiting.</p> : null}
                 {queue.map((order) => (
                   <article
                     className={`grid gap-4 border-b border-[var(--line)] p-5 last:border-b-0 sm:grid-cols-[72px_minmax(0,1fr)_160px] sm:items-center ${draggedOrderId === order.id ? "opacity-50" : ""}`}
@@ -171,14 +168,14 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
                       <div className="flex flex-wrap items-center gap-3">
                         <h3 className="text-xl font-black tracking-tight">{order.customerName}</h3>
                         <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${order.status === "ordered" ? "bg-[var(--orange-soft)] text-[var(--orange)]" : "bg-[var(--surface-soft)] text-[var(--coffee)]"}`}>
-                          {order.status === "ordered" ? "주문 접수" : "만드는 중"}
+                          {order.status === "ordered" ? "Received" : "In progress"}
                         </span>
                       </div>
                       <p className="mt-2 font-bold">{order.temperature === "iced" ? "Iced" : "Hot"} {order.drink}</p>
                       {order.note ? <p className="mt-2 border-l-2 border-[var(--line)] pl-3 text-sm text-[var(--muted)]">{order.note}</p> : null}
                     </div>
                     <button className="primary-action w-full p-3.5" disabled={updatingOrderId === order.id} onClick={() => advance(order)}>
-                      {updatingOrderId === order.id ? "변경 중..." : order.status === "ordered" ? "만들기 시작" : "준비 완료"}
+                      {updatingOrderId === order.id ? "Updating..." : order.status === "ordered" ? "Start making" : "Mark ready"}
                     </button>
                   </article>
                 ))}
@@ -187,16 +184,16 @@ export function BaristaExperience({ initial }: { initial: BoardData }) {
 
             <section>
               <div className="mb-3 flex items-center justify-between px-1">
-                <h2 className="font-black">완료된 주문</h2>
-                <span className="rounded-full bg-[var(--green-soft)] px-3 py-1 text-xs font-black text-[var(--green)]">{completed.length}잔</span>
+                <h2 className="font-black">Completed</h2>
+                <span className="rounded-full bg-[var(--green-soft)] px-3 py-1 text-xs font-black text-[var(--green)]">{completed.length}</span>
               </div>
               <div className="overflow-hidden rounded-[20px] border border-[var(--line)] bg-white">
-                {completed.length === 0 ? <p className="grid min-h-28 place-items-center text-sm text-[var(--muted)]">완료된 주문이 없습니다.</p> : null}
+                {completed.length === 0 ? <p className="grid min-h-28 place-items-center text-sm text-[var(--muted)]">No completed orders yet.</p> : null}
                 {completed.map((order) => (
                   <article className="grid gap-3 border-b border-[var(--line)] p-5 last:border-b-0 sm:grid-cols-[72px_minmax(0,1fr)_120px] sm:items-center" key={order.id}>
                     <div className="text-2xl font-black text-[var(--muted)]">#{order.orderNumber}</div>
                     <div><h3 className="font-black">{order.customerName}</h3><p className="mt-1 text-sm text-[var(--muted)]">{order.temperature === "iced" ? "Iced" : "Hot"} {order.drink}</p></div>
-                    <span className="text-sm font-bold text-[var(--green)] sm:text-right">준비 완료</span>
+                    <span className="text-sm font-bold text-[var(--green)] sm:text-right">Ready</span>
                   </article>
                 ))}
               </div>

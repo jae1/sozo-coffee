@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/001-shared-coffee-queue/plan.md`
+`specs/003-email-auth-order-history/plan.md`
 <!-- SPECKIT END -->

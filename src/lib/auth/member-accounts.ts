@@ -66,6 +66,7 @@ export async function signUpMember(input: {
     memberId: member.id,
     username,
     displayName: member.display_name,
+    role: "customer",
   });
   return { kind: "created" as const, recoveryCode };
 }
@@ -75,7 +76,7 @@ export async function loginMember(usernameInput: string, pin: string) {
   const username = normalizeUsername(usernameInput);
   const { data: account } = await db
     .from("member_accounts")
-    .select("id,member_id,username,pin_hash,failed_attempts,locked_until,members(display_name)")
+    .select("id,member_id,username,pin_hash,failed_attempts,locked_until,role,members(display_name)")
     .eq("username", username)
     .maybeSingle();
   if (!account) return { kind: "invalid" as const };
@@ -104,6 +105,7 @@ export async function loginMember(usernameInput: string, pin: string) {
     memberId: account.member_id,
     username,
     displayName,
+    role: account.role,
   });
   return { kind: "authenticated" as const };
 }
