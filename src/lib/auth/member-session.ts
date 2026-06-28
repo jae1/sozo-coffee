@@ -24,6 +24,19 @@ export type MemberSession = {
   authUserId?: string;
 };
 
+async function timeoutToNull<T>(promise: PromiseLike<T>, timeoutMs = 2500): Promise<T | null> {
+  let timeout: ReturnType<typeof setTimeout>;
+  const timer = new Promise<null>((resolve) => {
+    timeout = setTimeout(() => resolve(null), timeoutMs);
+  });
+  return Promise.race([Promise.resolve(promise).catch(() => null), timer]).finally(() => clearTimeout(timeout));
+}
+
+async function hasSupabaseAuthCookie() {
+  const cookieStore = await cookies();
+  return cookieStore.getAll().some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+}
+
 export async function createMemberSession(session: MemberSession) {
   const token = await new SignJWT({ ...session, sessionType: "member" })
     .setProtectedHeader({ alg: "HS256" })
@@ -41,15 +54,25 @@ export async function createMemberSession(session: MemberSession) {
 }
 
 export async function getMemberSession(): Promise<MemberSession | null> {
+  if (!(await hasSupabaseAuthCookie())) return null;
+
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const userResponse = await timeoutToNull(
+    supabase.auth.getUser(),
+    8000,
+  );
+  const user = userResponse?.data.user;
   if (!user) return null;
 
-  const { data: account } = await createAdminClient()
-    .from("member_accounts")
-    .select("id,member_id,username,email,role,members(display_name)")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
+  const accountResponse = await timeoutToNull(
+    createAdminClient()
+      .from("member_accounts")
+      .select("id,member_id,username,email,role,members(display_name)")
+      .eq("auth_user_id", user.id)
+      .maybeSingle(),
+    8000,
+  );
+  const account = accountResponse?.data;
   if (!account || !["customer", "barista", "admin"].includes(account.role)) return null;
   const member = Array.isArray(account.members) ? account.members[0] : account.members;
   return {
@@ -69,6 +92,12 @@ export function canManageOrders(session: MemberSession | null) {
 
 export function isAdmin(session: MemberSession | null) {
   return session?.role === "admin";
+}
+
+export function getRoleLandingPath(session: MemberSession) {
+  if (session.role === "barista") return "/barista";
+  if (session.role === "admin") return "/account";
+  return "/order";
 }
 
 export async function clearMemberSession() {

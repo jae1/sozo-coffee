@@ -1,6 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+async function refreshWithoutBlocking(promise: PromiseLike<unknown>) {
+  let timeout: ReturnType<typeof setTimeout>;
+  const timer = new Promise<void>((resolve) => {
+    timeout = setTimeout(resolve, 2500);
+  });
+  await Promise.race([Promise.resolve(promise).catch(() => null), timer]).finally(() => clearTimeout(timeout));
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
@@ -19,6 +27,6 @@ export async function updateSession(request: NextRequest) {
       },
     },
   );
-  await supabase.auth.getClaims();
+  await refreshWithoutBlocking(supabase.auth.getClaims());
   return response;
 }

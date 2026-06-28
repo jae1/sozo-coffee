@@ -11,6 +11,12 @@ export function LoginPageExperience() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
 
+  async function goToRoleLanding() {
+    const response = await fetch("/api/auth/landing", { cache: "no-store" });
+    const data = response.ok ? await response.json() : { path: "/order" };
+    window.location.href = typeof data.path === "string" ? data.path : "/order";
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
@@ -42,7 +48,7 @@ export function LoginPageExperience() {
         password,
         options: {
           data: { display_name: displayName },
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/order`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       setPending(false);
@@ -54,7 +60,7 @@ export function LoginPageExperience() {
         setMessage("Check your email to confirm your account.");
         return;
       }
-      window.location.href = "/order";
+      await goToRoleLanding();
       return;
     }
 
@@ -64,7 +70,7 @@ export function LoginPageExperience() {
       setMessage("Email or password is incorrect.");
       return;
     }
-    window.location.href = "/order";
+    await goToRoleLanding();
   }
 
   return (

@@ -13,6 +13,8 @@ export function AccountExperience({
   session: MemberSession;
   history: { orders: OrderHistoryItem[]; frequent: FrequentOrder[] };
 }) {
+  const canManageOrders = session.role === "barista" || session.role === "admin";
+
   async function logout() {
     await createBrowserSupabaseClient().auth.signOut();
     window.location.href = "/";
@@ -22,7 +24,12 @@ export function AccountExperience({
     <div className="app-shell">
       <SiteHeader
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {canManageOrders ? (
+              <Link className="secondary-action flex min-h-11 items-center px-5" href="/barista">
+                Barista Station
+              </Link>
+            ) : null}
             {session.role === "admin" ? (
               <Link className="secondary-action flex min-h-11 items-center px-5" href="/admin">
                 Admin Panel
@@ -37,10 +44,38 @@ export function AccountExperience({
       />
       <main className="page-container account-dashboard">
         <div className="page-heading">
-          <p className="eyebrow">Your account</p>
+          <p className="eyebrow">{session.role === "admin" ? "Admin hub" : session.role === "barista" ? "Barista hub" : "Your account"}</p>
           <h1>Hi, {session.displayName}.</h1>
-          <p>{session.email}</p>
+          <p>
+            {session.role === "admin"
+              ? "Choose where you want to work today."
+              : session.role === "barista"
+                ? "Jump into the order board or place a coffee order."
+                : session.email}
+          </p>
         </div>
+
+        {canManageOrders ? (
+          <section className="account-actions">
+            <Link className="account-action-card" href="/barista">
+              <span className="eyebrow">Staff</span>
+              <strong>Barista Station</strong>
+              <span>Open the live order board and manage café status.</span>
+            </Link>
+            {session.role === "admin" ? (
+              <Link className="account-action-card" href="/admin">
+                <span className="eyebrow">Admin</span>
+                <strong>Member Roles</strong>
+                <span>Manage access for customers, baristas, and admins.</span>
+              </Link>
+            ) : null}
+            <Link className="account-action-card" href="/order">
+              <span className="eyebrow">Customer</span>
+              <strong>Order Coffee</strong>
+              <span>Place a drink order using your account.</span>
+            </Link>
+          </section>
+        ) : null}
 
         <section className="account-summary panel">
           <div>
@@ -95,13 +130,17 @@ export function AccountExperience({
           <section className="panel mt-9 p-6">
             <h2 className="text-xl font-black">Admin Panel</h2>
             <p className="mt-2 text-sm text-[var(--muted)]">Manage member roles and permissions in a dedicated interface.</p>
-            <Link className="primary-action mt-4 inline-flex min-h-11 items-center px-5" href="/admin">
-              Go to Member Management
-            </Link>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link className="primary-action inline-flex min-h-11 items-center px-5" href="/admin">
+                Go to Member Management
+              </Link>
+              <Link className="secondary-action inline-flex min-h-11 items-center px-5" href="/barista">
+                Open Barista Station
+              </Link>
+            </div>
           </section>
         ) : null}
       </main>
     </div>
   );
 }
-
