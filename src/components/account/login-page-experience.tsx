@@ -79,18 +79,18 @@ export function LoginPageExperience() {
         <div className="w-full max-w-md">
           <span className="brand-mark">S</span>
           <p className="mt-8 text-sm font-black uppercase tracking-[0.16em] text-[var(--sbx-green)]">Sozo Coffee</p>
-          <h1 className="mt-2 text-4xl font-black tracking-[-0.05em]">
+          <h1 className="auth-title">
             {resetOpen ? "Reset your password" : mode === "signin" ? "Welcome back" : "Create your account"}
           </h1>
 
           {!resetOpen ? (
-            <div className="mt-7 grid grid-cols-2 rounded-full bg-[var(--surface-soft)] p-1">
+            <div className="auth-segmented">
               {([
                 ["signin", "Sign in"],
                 ["signup", "Sign up"],
               ] as const).map(([value, label]) => (
                 <button
-                  className={`rounded-full px-3 py-2 text-sm font-bold ${mode === value ? "bg-white shadow-sm" : "text-[var(--muted)]"}`}
+                  className={mode === value ? "is-active" : ""}
                   key={value}
                   onClick={() => { setMode(value); setMessage(""); }}
                   type="button"

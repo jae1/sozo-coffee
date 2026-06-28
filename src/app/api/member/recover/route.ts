@@ -12,9 +12,9 @@ export async function POST(request: Request) {
       parsed.data.recoveryCode,
       parsed.data.newPin,
     );
-    if (result.kind === "invalid") return apiError(401, "invalid_recovery", "유저네임 또는 복구 코드가 맞지 않습니다.");
+    if (result.kind === "invalid") return apiError(401, "invalid_recovery", "Username or recovery code is incorrect.");
     return NextResponse.json({ recoveryCode: result.recoveryCode });
   } catch {
-    return apiError(500, "recovery_failed", "PIN을 재설정하지 못했습니다.");
+    return apiError(500, "recovery_failed", "Could not reset your PIN.");
   }
 }

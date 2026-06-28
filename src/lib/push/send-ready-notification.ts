@@ -17,7 +17,7 @@ export async function sendReadyNotification(customerName: string, subscription: 
       subscription,
       JSON.stringify({
         title: "Sozo Coffee",
-        body: `${customerName}님, 커피가 준비됐어요.`,
+        body: `${customerName}, your coffee is ready.`,
         url: "/order",
       }),
     );

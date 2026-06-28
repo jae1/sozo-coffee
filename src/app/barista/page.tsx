@@ -7,6 +7,6 @@ export const dynamic = "force-dynamic";
 
 export default async function BaristaPage() {
   const session = await getMemberSession();
-  if (!canManageOrders(session)) redirect("/account");
-  return <BaristaExperience initial={await getBoard()} />;
+  if (!session || !canManageOrders(session)) redirect("/account");
+  return <BaristaExperience initial={await getBoard()} session={session} />;
 }

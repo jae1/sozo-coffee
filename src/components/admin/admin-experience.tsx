@@ -1,9 +1,9 @@
 "use client";
 
 import { SiteHeader } from "@/components/layout/site-header";
+import { AppTabs } from "@/components/navigation/app-tabs";
 import type { MemberSession } from "@/lib/auth/member-session";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 type ManagedMember = {
   accountId: string;
@@ -46,53 +46,60 @@ export function AdminExperience({
 
   return (
     <div className="app-shell">
-      <SiteHeader
-        actions={
-          <div className="flex gap-2">
-            <Link className="secondary-action flex min-h-11 items-center px-5" href="/account">
-              Back to Account
-            </Link>
-            <Link className="primary-action flex min-h-11 items-center px-5" href="/order">
-              Order coffee
-            </Link>
-          </div>
-        }
-        section="Admin Dashboard"
-      />
-      <main className="page-container">
+      <SiteHeader />
+      <AppTabs session={session} />
+      <main className="page-container admin-page">
         <div className="page-heading">
           <p className="eyebrow">Admin management</p>
           <h1>Member Roles</h1>
           <p>Assign and manage access control for users.</p>
         </div>
-
         {message ? (
-          <p aria-live="polite" className="mb-5 rounded-xl bg-[var(--green-soft)] p-3 text-sm font-bold text-[var(--green)]">
+          <p
+            aria-live="polite"
+            className="mb-5 rounded-xl bg-[var(--sbx-green-light)] p-3 text-sm font-bold text-[var(--sbx-green)]"
+          >
             {message}
           </p>
         ) : null}
 
-        <section className="panel p-6">
-          <h2 className="text-xl font-black">All Members</h2>
-          <div className="mt-4 divide-y divide-[var(--line)]">
+        <section className="panel admin-card">
+          <div className="admin-card__header">
+            <div>
+              <p className="eyebrow">Access</p>
+              <h2>All Members</h2>
+            </div>
+            <span>{members.length} total</span>
+          </div>
+          <div className="admin-member-list">
             {members.map((member) => (
-              <div className="flex items-center justify-between gap-4 py-4" key={member.accountId}>
-                <div className="min-w-0">
-                  <p className="truncate font-black">{member.displayName}</p>
-                  <p className="truncate text-xs text-[var(--muted)]">{member.username}</p>
+              <div className="admin-member-row" key={member.accountId}>
+                <div className="admin-member-row__identity">
+                  <span>{member.displayName.slice(0, 1).toUpperCase()}</span>
+                  <div>
+                    <p>{member.displayName}</p>
+                    <small>{member.accountId === session.accountId ? "You · cannot change your own role" : member.username}</small>
+                  </div>
                 </div>
-                <select
-                  className="field w-auto min-w-28"
-                  disabled={member.accountId === session.accountId}
-                  onChange={(event) =>
-                    void updateRole(member.accountId, event.target.value as ManagedMember["role"])
-                  }
-                  value={member.role}
-                >
-                  <option value="customer">Customer</option>
-                  <option value="barista">Barista</option>
-                  <option value="admin">Admin</option>
-                </select>
+                {member.accountId === session.accountId ? (
+                  <div className="admin-role-locked" aria-label="Your current role">
+                    <span>{member.role}</span>
+                  </div>
+                ) : (
+                  <div className="admin-role-group" role="group" aria-label={`Role for ${member.displayName}`}>
+                    {(["customer", "barista", "admin"] as const).map((role) => (
+                      <button
+                        aria-pressed={member.role === role}
+                        className={member.role === role ? "is-active" : ""}
+                        key={role}
+                        onClick={() => void updateRole(member.accountId, role)}
+                        type="button"
+                      >
+                        {role === "customer" ? "Customer" : role === "barista" ? "Barista" : "Admin"}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

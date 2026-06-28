@@ -1,6 +1,7 @@
 "use client";
 
 import { SharedBoard } from "@/components/board/shared-board";
+import { AppTabs } from "@/components/navigation/app-tabs";
 import type { BoardData } from "@/types/coffee";
 import type { MemberSession } from "@/lib/auth/member-session";
 import Link from "next/link";
@@ -25,7 +26,15 @@ function getIOSSafariSnapshot() {
   return isIOS && !isStandalone;
 }
 
-export function OrderExperience({ initial, memberSession }: { initial: BoardData; memberSession: MemberSession | null }) {
+export function OrderExperience({
+  initial,
+  initialTab,
+  memberSession,
+}: {
+  initial: BoardData;
+  initialTab?: "order" | "status";
+  memberSession: MemberSession | null;
+}) {
   const [board, setBoard] = useState(initial);
   const [identityType, setIdentityType] = useState<"member" | "guest">("member");
   const [memberId, setMemberId] = useState(memberSession?.memberId ?? initial.members[0]?.id ?? "");
@@ -35,7 +44,7 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
   const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
-  const [activeTab, setActiveTab] = useState<"order" | "status">("order");
+  const [activeTab, setActiveTab] = useState<"order" | "status">(initialTab ?? "order");
   const [pushSubscription, setPushSubscription] = useState<PushSubscriptionJSON | null>(null);
   const [notificationMessage, setNotificationMessage] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -43,6 +52,12 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
   const cartToastTimer = useRef<number | null>(null);
   const isIOSSafari = useSyncExternalStore(subscribeToBrowser, getIOSSafariSnapshot, () => false);
   const selectedDrink = board.menu.find((item) => item.id === menuItemId);
+  const cartItemLabel = `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
+  const cartSummary = cart.length === 0
+    ? "Choose a drink."
+    : cart.length === 1
+      ? `${cart[0].temperature === "iced" ? "Iced" : "Hot"} ${cart[0].drinkName}`
+      : `${cart.length} drinks ready to place.`;
 
   async function refresh() {
     const response = await fetch("/api/board", { cache: "no-store" });
@@ -130,6 +145,7 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
       setMessage("Some drinks could not be ordered. Check your order status.");
       await refresh();
       setActiveTab("status");
+      window.history.replaceState(null, "", "/order?tab=status");
       return;
     }
     setMessage(`Your order for ${cart.length} ${cart.length === 1 ? "drink" : "drinks"} has been placed.`);
@@ -137,6 +153,7 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
     setNote("");
     await refresh();
     setActiveTab("status");
+    window.history.replaceState(null, "", "/order?tab=status");
     setTimeout(() => setMessage(""), 3000);
   }
 
@@ -163,7 +180,7 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
       <main className="app-shell grid place-items-center p-5">
         <section className="panel w-full max-w-lg p-8 text-center sm:p-12">
           <p className="text-sm font-bold text-[var(--muted)]">Sozo Coffee</p>
-          <h1 className="mt-3 text-3xl font-black">We’re currently closed.</h1>
+          <h1 className="mt-3 text-3xl font-black leading-tight">We’re currently closed.</h1>
           <p className="mx-auto mt-4 max-w-sm leading-6 text-[var(--muted)]">You can order here when the café opens.</p>
           <Link className="secondary-action mt-7 inline-flex items-center justify-center px-6" href="/">Go home</Link>
         </section>
@@ -173,49 +190,18 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
 
   return (
     <div className="app-shell">
-      <SiteHeader
-        actions={
-          <>
-            <Link className="site-account-button" href="/account">
-              {memberSession ? memberSession.displayName : "Sign in"}
-            </Link>
-          </>
-        }
-        section="Order & Pickup"
-      />
+      <SiteHeader />
+      {memberSession ? <AppTabs session={memberSession} /> : null}
 
       <main className="mx-auto max-w-[1440px] px-4 py-6 pb-32 sm:px-6 sm:py-8 lg:pb-10">
         <div className="order-hero mb-6 overflow-hidden rounded-[28px]">
           <div className="relative z-10 max-w-xl px-6 py-8 sm:px-10 sm:py-11">
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/70">SOZO COFFEE</p>
-            <h1 className="text-4xl font-black tracking-[-0.05em] text-white sm:text-5xl">What are you<br />drinking today?</h1>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-bold text-white backdrop-blur">
-              <span className="h-2 w-2 rounded-full bg-[#80d6a7]" />
-              Open now · Pickup
+            <h1 className="order-hero__title">What are you<br />drinking today?</h1>
+            <div className="order-hero__status">
+              <span aria-hidden="true" />
+              Open now
             </div>
           </div>
-        </div>
-
-        {/* Tab switcher */}
-        <div className="order-tabs mb-7 flex gap-7 border-b border-[var(--line)]">
-          <button
-            className={`order-tab px-1 pb-3 font-black ${activeTab === "order" ? "is-active" : "text-[var(--muted)]"}`}
-            onClick={() => setActiveTab("order")}
-            type="button"
-          >
-            Menu
-          </button>
-          <button
-            className={`order-tab px-1 pb-3 font-black ${activeTab === "status" ? "is-active" : "text-[var(--muted)]"}`}
-            onClick={() => {
-              setActiveTab("status");
-              void refresh();
-            }}
-            type="button"
-          >
-            Order Status
-            {board.orders.length > 0 ? <span className="ml-2 rounded-full bg-[var(--ink)] px-2 py-0.5 text-xs text-white">{board.orders.length}</span> : null}
-          </button>
         </div>
 
         {activeTab === "order" ? (
@@ -245,7 +231,7 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
                 <fieldset>
                   <div className="mb-4 flex items-end justify-between">
                     <div>
-                      <legend className="text-2xl font-black tracking-tight">Choose your drink</legend>
+                      <legend className="section-title">Choose your drink</legend>
                     </div>
                   </div>
                   <div className="menu-grid grid gap-3 sm:grid-cols-3">
@@ -315,12 +301,12 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
               {/* Right: live order summary + notification + submit */}
               <div className="mt-4 flex flex-col gap-4 lg:mt-0">
                 {/* Order preview card */}
-                <div className="panel cart-panel p-5 sm:p-6">
+                <div className="panel cart-panel order-review-panel p-5 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-black">Review Order</h2>
                     </div>
-                    <span className="rounded-full bg-[var(--green-soft)] px-3 py-1 text-sm font-black text-[var(--green)]">{cart.length}</span>
+                    <span className="rounded-full bg-[var(--green-soft)] px-3 py-1 text-sm font-black text-[var(--green)]">{cartItemLabel}</span>
                   </div>
 
                   <div className="mt-5 grid gap-2">
@@ -384,12 +370,12 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
             </div>
 
             {/* Mobile fixed bottom bar */}
-            <div aria-hidden="true" className="h-24 lg:hidden" />
-            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white p-3 shadow-[0_-8px_30px_rgb(20_20_18/8%)] lg:hidden">
+            <div aria-hidden="true" className="h-40 lg:hidden" />
+            <div className="mobile-order-bar">
               <div className="mx-auto flex max-w-lg items-center gap-3">
                 <div className="min-w-0 flex-1 pl-1">
-                  <p className="truncate text-sm font-black">Your order · {cart.length}</p>
-                  <p className="truncate text-xs text-[var(--muted)]">{cart.length ? "Pickup at the café." : "Choose a drink."}</p>
+                  <p className="truncate text-sm font-black">Your order · {cartItemLabel}</p>
+                  <p className="truncate text-xs text-[var(--muted)]">{cartSummary}</p>
                 </div>
                 <button className="primary-action min-w-32 px-5" disabled={pending || cart.length === 0} type="submit">{pending ? "Placing…" : "Place order"}</button>
               </div>
@@ -398,7 +384,7 @@ export function OrderExperience({ initial, memberSession }: { initial: BoardData
         ) : (
           <section>
             <div className="mb-4 flex items-end justify-between gap-4">
-              <h2 className="text-2xl font-black tracking-tight">Order Status</h2>
+              <h2 className="section-title">Order Status</h2>
               <p className="text-sm text-[var(--muted)]">{board.orders.length} total</p>
             </div>
             <SharedBoard orders={board.orders} />

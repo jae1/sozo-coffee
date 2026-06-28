@@ -5,8 +5,14 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrderPage() {
+export default async function OrderPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
   const [initial, memberSession] = await Promise.all([getBoard(), getMemberSession()]);
   if (!memberSession) redirect("/");
-  return <OrderExperience initial={initial} memberSession={memberSession} />;
+  const params = await searchParams;
+  const initialTab = params?.tab === "status" ? "status" : "order";
+  return <OrderExperience initial={initial} initialTab={initialTab} key={initialTab} memberSession={memberSession} />;
 }

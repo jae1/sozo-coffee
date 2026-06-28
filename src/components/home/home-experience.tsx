@@ -93,7 +93,7 @@ export function HomeExperience({ session }: { session: MemberSession | null }) {
             <div className="mb-7">
               <span className="brand-mark">S</span>
               <p className="mt-6 text-sm font-bold text-[var(--sbx-green)]">WELCOME BACK</p>
-              <h2 className="mt-2 text-3xl font-black tracking-[-0.04em]" id="login-title">Sign in to Sozo</h2>
+              <h2 className="section-title mt-2" id="login-title">Sign in to Sozo</h2>
               <p className="mt-2 text-sm text-[var(--muted)]">Order ahead and get notified when your coffee is ready.</p>
             </div>
             <form className="grid gap-4" onSubmit={login}>

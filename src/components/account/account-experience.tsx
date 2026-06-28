@@ -1,10 +1,14 @@
 "use client";
 
 import { SiteHeader } from "@/components/layout/site-header";
+import { AppTabs } from "@/components/navigation/app-tabs";
 import type { MemberSession } from "@/lib/auth/member-session";
 import type { FrequentOrder, OrderHistoryItem } from "@/lib/orders/get-order-history";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import Link from "next/link";
+import { useState } from "react";
+
+const INITIAL_HISTORY_COUNT = 5;
+const HISTORY_INCREMENT = 5;
 
 export function AccountExperience({
   session,
@@ -13,7 +17,9 @@ export function AccountExperience({
   session: MemberSession;
   history: { orders: OrderHistoryItem[]; frequent: FrequentOrder[] };
 }) {
-  const canManageOrders = session.role === "barista" || session.role === "admin";
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(INITIAL_HISTORY_COUNT);
+  const visibleOrders = history.orders.slice(0, visibleHistoryCount);
+  const hiddenOrderCount = Math.max(history.orders.length - visibleOrders.length, 0);
 
   async function logout() {
     await createBrowserSupabaseClient().auth.signOut();
@@ -22,124 +28,75 @@ export function AccountExperience({
 
   return (
     <div className="app-shell">
-      <SiteHeader
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {canManageOrders ? (
-              <Link className="secondary-action flex min-h-11 items-center px-5" href="/barista">
-                Barista Station
-              </Link>
-            ) : null}
-            {session.role === "admin" ? (
-              <Link className="secondary-action flex min-h-11 items-center px-5" href="/admin">
-                Admin Panel
-              </Link>
-            ) : null}
-            <Link className="primary-action flex min-h-11 items-center px-5" href="/order">
-              Order coffee
-            </Link>
-          </div>
-        }
-        section="Account"
-      />
+      <SiteHeader />
+      <AppTabs session={session} />
       <main className="page-container account-dashboard">
         <div className="page-heading">
-          <p className="eyebrow">{session.role === "admin" ? "Admin hub" : session.role === "barista" ? "Barista hub" : "Your account"}</p>
-          <h1>Hi, {session.displayName}.</h1>
-          <p>
-            {session.role === "admin"
-              ? "Choose where you want to work today."
-              : session.role === "barista"
-                ? "Jump into the order board or place a coffee order."
-                : session.email}
-          </p>
+          <p className="eyebrow">Account</p>
+          <h1>Your coffee history.</h1>
+          <p>{session.email}</p>
         </div>
 
-        {canManageOrders ? (
-          <section className="account-actions">
-            <Link className="account-action-card" href="/barista">
-              <span className="eyebrow">Staff</span>
-              <strong>Barista Station</strong>
-              <span>Open the live order board and manage café status.</span>
-            </Link>
-            {session.role === "admin" ? (
-              <Link className="account-action-card" href="/admin">
-                <span className="eyebrow">Admin</span>
-                <strong>Member Roles</strong>
-                <span>Manage access for customers, baristas, and admins.</span>
-              </Link>
-            ) : null}
-            <Link className="account-action-card" href="/order">
-              <span className="eyebrow">Customer</span>
-              <strong>Order Coffee</strong>
-              <span>Place a drink order using your account.</span>
-            </Link>
-          </section>
-        ) : null}
-
-        <section className="account-summary panel">
-          <div>
-            <p className="text-sm text-[var(--muted)]">Account</p>
-            <p className="mt-1 font-black">{session.displayName}</p>
-            <p className="text-sm text-[var(--muted)]">{session.email}</p>
-          </div>
-          <span className="rounded-full bg-[var(--green-soft)] px-3 py-1 text-xs font-black uppercase text-[var(--green)]">{session.role}</span>
-          <button className="secondary-action px-5" onClick={logout}>Sign out</button>
-        </section>
-
-        <section className="mt-8">
+        <section>
           <div className="mb-4">
-            <p className="eyebrow">Your favorites</p>
-            <h2 className="mt-1 text-2xl font-black">Frequently ordered</h2>
+            <h2 className="section-title">Frequently ordered</h2>
           </div>
           {history.frequent.length ? (
             <div className="grid gap-3 sm:grid-cols-3">
               {history.frequent.map((item) => (
-                <div className="panel p-5" key={`${item.temperature}-${item.drink}`}>
+                <div className="panel compact-card" key={`${item.temperature}-${item.drink}`}>
                   <p className="text-lg font-black">{item.temperature === "iced" ? "Iced" : "Hot"} {item.drink}</p>
                   <p className="mt-2 text-sm text-[var(--muted)]">Ordered {item.count} {item.count === 1 ? "time" : "times"}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="panel p-7 text-center text-[var(--muted)]">Your favorites will appear after you place a few orders.</div>
+            <div className="panel empty-card">Favorites appear after a few orders.</div>
           )}
         </section>
 
         <section className="mt-9">
           <div className="mb-4 flex items-end justify-between">
-            <div><p className="eyebrow">Past orders</p><h2 className="mt-1 text-2xl font-black">Order history</h2></div>
+            <h2 className="section-title">Order history</h2>
             <span className="text-sm font-bold text-[var(--muted)]">{history.orders.length} total</span>
           </div>
-          <div className="overflow-hidden rounded-[20px] border border-[var(--line)] bg-white shadow-[var(--shadow-card)]">
-            {history.orders.length === 0 ? <p className="grid min-h-36 place-items-center text-[var(--muted)]">No orders yet.</p> : null}
-            {history.orders.map((order) => (
-              <article className="flex items-center justify-between gap-4 border-b border-[var(--line)] p-5 last:border-0" key={order.id}>
+          <div className="history-list">
+            {history.orders.length === 0 ? <p className="empty-card">No orders yet.</p> : null}
+            {visibleOrders.map((order) => (
+              <article className="history-row" key={order.id}>
                 <div>
                   <p className="font-black">{order.temperature === "iced" ? "Iced" : "Hot"} {order.drink}</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">{new Date(order.orderedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                   {order.note ? <p className="mt-1 text-xs text-[var(--muted)]">{order.note}</p> : null}
                 </div>
-                <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-bold capitalize">{order.status.replace("_", " ")}</span>
+                <time dateTime={order.orderedAt}>
+                  {new Date(order.orderedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </time>
               </article>
             ))}
           </div>
+          {hiddenOrderCount > 0 ? (
+            <button
+              className="history-show-more"
+              onClick={() =>
+                setVisibleHistoryCount((current) =>
+                  Math.min(current + HISTORY_INCREMENT, history.orders.length)
+                )
+              }
+              type="button"
+            >
+              Show more
+              <span>{hiddenOrderCount} more</span>
+            </button>
+          ) : null}
         </section>
 
-        {session.role === "admin" ? (
-          <section className="panel mt-9 p-6">
-            <h2 className="text-xl font-black">Admin Panel</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Manage member roles and permissions in a dedicated interface.</p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link className="primary-action inline-flex min-h-11 items-center px-5" href="/admin">
-                Go to Member Management
-              </Link>
-              <Link className="secondary-action inline-flex min-h-11 items-center px-5" href="/barista">
-                Open Barista Station
-              </Link>
-            </div>
-          </section>
-        ) : null}
+        <section className="account-footer" aria-label="Signed-in account">
+          <div>
+            <p>{session.email}</p>
+            <span>{session.role}</span>
+          </div>
+          <button onClick={logout} type="button">Sign out</button>
+        </section>
       </main>
     </div>
   );
