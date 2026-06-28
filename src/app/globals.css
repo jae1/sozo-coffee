@@ -1545,6 +1545,34 @@ textarea.field { padding-block: 12px; }
   opacity: 1;
 }
 
+.auth-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.auth-options label {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.auth-options input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  accent-color: var(--sbx-green);
+}
+
+.auth-options button {
+  min-height: 44px;
+}
+
 /* ─── Misc ───────────────────────────────────── */
 .eyebrow {
   color: var(--muted);

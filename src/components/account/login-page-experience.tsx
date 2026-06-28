@@ -1,15 +1,25 @@
 "use client";
 
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useSyncExternalStore } from "react";
 
 type Mode = "signin" | "signup";
+
+function subscribeToRememberedEmail() {
+  return () => {};
+}
+
+function getRememberedEmailSnapshot() {
+  return window.localStorage.getItem("sozo_remembered_email") ?? "";
+}
 
 export function LoginPageExperience() {
   const [mode, setMode] = useState<Mode>("signin");
   const [resetOpen, setResetOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const rememberedEmail = useSyncExternalStore(subscribeToRememberedEmail, getRememberedEmailSnapshot, () => "");
 
   async function goToRoleLanding() {
     const response = await fetch("/api/auth/landing", { cache: "no-store" });
@@ -22,12 +32,12 @@ export function LoginPageExperience() {
     setPending(true);
     setMessage("");
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") ?? "").trim();
+    const submittedEmail = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
     const supabase = createBrowserSupabaseClient();
 
     if (resetOpen) {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(submittedEmail, {
         redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       });
       setPending(false);
@@ -44,7 +54,7 @@ export function LoginPageExperience() {
         return;
       }
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: submittedEmail,
         password,
         options: {
           data: { display_name: displayName },
@@ -64,11 +74,16 @@ export function LoginPageExperience() {
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: submittedEmail, password });
     setPending(false);
     if (error) {
       setMessage("Email or password is incorrect.");
       return;
+    }
+    if (rememberMe) {
+      window.localStorage.setItem("sozo_remembered_email", submittedEmail);
+    } else {
+      window.localStorage.removeItem("sozo_remembered_email");
     }
     await goToRoleLanding();
   }
@@ -110,7 +125,17 @@ export function LoginPageExperience() {
             ) : null}
 
             <label className="sr-only" htmlFor="auth-email">Email</label>
-            <input autoCapitalize="none" autoComplete="email" className="field auth-field" id="auth-email" name="email" placeholder="Email" required type="email" />
+            <input
+              autoCapitalize="none"
+              autoComplete="email"
+              className="field auth-field"
+              defaultValue={rememberedEmail}
+              id="auth-email"
+              name="email"
+              placeholder="Email"
+              required
+              type="email"
+            />
 
             {!resetOpen ? (
               <>
@@ -127,9 +152,15 @@ export function LoginPageExperience() {
             ) : null}
 
             {!resetOpen && mode === "signin" ? (
-              <button className="justify-self-end text-sm font-bold text-[var(--sbx-green)]" onClick={() => { setResetOpen(true); setMessage(""); }} type="button">
-                Forgot password?
-              </button>
+              <div className="auth-options">
+                <label>
+                  <input checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} type="checkbox" />
+                  <span>Keep me signed in</span>
+                </label>
+                <button className="text-sm font-bold text-[var(--sbx-green)]" onClick={() => { setResetOpen(true); setMessage(""); }} type="button">
+                  Forgot password?
+                </button>
+              </div>
             ) : null}
 
             <button className="primary-action mt-2 min-h-14 px-5 text-base" disabled={pending}>
